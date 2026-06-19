@@ -6,7 +6,20 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize } from '../../src/constants/theme';
 import { analyzePDF } from '../../src/services/llm';
+import { sendLineNotification } from '../../src/services/line-notify';
 import { getDatabase } from '../../src/db/database';
+
+function getMimeType(fileName: string): string {
+  const ext = fileName.toLowerCase().split('.').pop();
+  switch (ext) {
+    case 'jpg': case 'jpeg': return 'image/jpeg';
+    case 'png': return 'image/png';
+    case 'gif': return 'image/gif';
+    case 'webp': return 'image/webp';
+    case 'heic': return 'image/heic';
+    default: return 'application/pdf';
+  }
+}
 
 export default function ScanScreen() {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -15,7 +28,7 @@ export default function ScanScreen() {
   const pickDocument = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: 'application/pdf',
+        type: ['application/pdf', 'image/*'],
         copyToCacheDirectory: true,
       });
 
@@ -24,24 +37,23 @@ export default function ScanScreen() {
       const file = result.assets[0];
       await processFile(file.uri, file.name);
     } catch (e: any) {
-      Alert.alert('Error', e.message);
+      Alert.alert('エラー', e.message);
     }
   };
 
   const processFile = async (uri: string, fileName: string) => {
     setIsProcessing(true);
-    setStatusText('PDFを読み込み中...');
+    setStatusText('ファイルを読み込み中...');
 
     try {
-      // Read file as base64
       const base64 = await FileSystem.readAsStringAsync(uri, {
         encoding: FileSystem.EncodingType.Base64,
       });
 
+      const mimeType = getMimeType(fileName);
       setStatusText('AI解析中...');
-      const analysisResult = await analyzePDF(base64);
+      const analysisResult = await analyzePDF(base64, mimeType);
 
-      // Save to DB
       setStatusText('保存中...');
       const db = await getDatabase();
       const docResult = await db.runAsync(
@@ -61,7 +73,6 @@ export default function ScanScreen() {
 
       const docId = docResult.lastInsertRowId;
 
-      // Save events
       for (const event of analysisResult.events) {
         await db.runAsync(
           'INSERT INTO events (document_id, title, date, start_time, end_time, location, target_person, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
@@ -69,7 +80,6 @@ export default function ScanScreen() {
         );
       }
 
-      // Save todos
       for (const todo of analysisResult.todos) {
         await db.runAsync(
           'INSERT INTO todos (document_id, title, due_date, target_person, description) VALUES (?, ?, ?, ?, ?)',
@@ -77,13 +87,16 @@ export default function ScanScreen() {
         );
       }
 
-      // Save items
       for (const item of analysisResult.items) {
         await db.runAsync(
           'INSERT INTO items (document_id, name, due_date, target_person, description) VALUES (?, ?, ?, ?, ?)',
           [docId, item.name, item.dueDate || null, item.targetPerson, item.description]
         );
       }
+
+      // Send LINE notification (non-blocking)
+      setStatusText('LINE通知送信中...');
+      sendLineNotification(analysisResult).catch(() => {});
 
       setIsProcessing(false);
       setStatusText('');
@@ -101,6 +114,7 @@ export default function ScanScreen() {
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={Colors.primary} />
         <Text style={styles.loadingText}>{statusText}</Text>
+        <Text style={styles.loadingHint}>プリントの内容をAIが解析しています</Text>
       </View>
     );
   }
@@ -108,17 +122,17 @@ export default function ScanScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>プリントを取り込む</Text>
-      <Text style={styles.subtitle}>PDFファイルを選択して、AIが自動で解析します</Text>
+      <Text style={styles.subtitle}>PDF・画像ファイルを選択して、AIが自動で解析します</Text>
 
       <TouchableOpacity style={styles.option} onPress={pickDocument}>
         <View style={[styles.iconCircle, { backgroundColor: Colors.primaryLight }]}>
           <Ionicons name="document" size={32} color={Colors.primary} />
         </View>
         <Text style={styles.optionTitle}>ファイルから選択</Text>
-        <Text style={styles.optionDesc}>端末内のPDFを選択</Text>
+        <Text style={styles.optionDesc}>PDF・JPG・PNGに対応</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.option} onPress={() => Alert.alert('準備中', 'カメラスキャン機能はPhase 1で実装予定です')}>
+      <TouchableOpacity style={styles.option} onPress={() => Alert.alert('準備中', 'カメラスキャン機能は次のアップデートで実装予定です')}>
         <View style={[styles.iconCircle, { backgroundColor: '#FFF3E0' }]}>
           <Ionicons name="camera" size={32} color={Colors.secondary} />
         </View>
@@ -126,7 +140,7 @@ export default function ScanScreen() {
         <Text style={styles.optionDesc}>プリントを撮影してPDF化</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.option} onPress={() => Alert.alert('準備中', 'Google Drive連携はPhase 2で実装予定です')}>
+      <TouchableOpacity style={styles.option} onPress={() => Alert.alert('準備中', 'Google Drive連携は設定画面からGoogleアカウントを連携してください')}>
         <View style={[styles.iconCircle, { backgroundColor: '#E8F5E9' }]}>
           <Ionicons name="cloud" size={32} color={Colors.success} />
         </View>
@@ -153,4 +167,5 @@ const styles = StyleSheet.create({
   optionDesc: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 2 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background },
   loadingText: { fontSize: FontSize.lg, color: Colors.text, marginTop: Spacing.md },
+  loadingHint: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: Spacing.xs },
 });

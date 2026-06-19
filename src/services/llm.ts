@@ -87,7 +87,12 @@ ${facilitiesInfo || '(未登録)'}
 7. suggestedFileNameはYYYY-MM_発行元_タイトル.pdf の形式`;
 }
 
-async function callClaude(apiKey: string, model: string, prompt: string, pdfBase64: string): Promise<string> {
+async function callClaude(apiKey: string, model: string, prompt: string, base64Data: string, mimeType: string = 'application/pdf'): Promise<string> {
+  const isImage = mimeType.startsWith('image/');
+  const contentBlock = isImage
+    ? { type: 'image' as const, source: { type: 'base64' as const, media_type: mimeType, data: base64Data } }
+    : { type: 'document' as const, source: { type: 'base64' as const, media_type: mimeType, data: base64Data } };
+
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -101,17 +106,7 @@ async function callClaude(apiKey: string, model: string, prompt: string, pdfBase
       messages: [
         {
           role: 'user',
-          content: [
-            {
-              type: 'document',
-              source: {
-                type: 'base64',
-                media_type: 'application/pdf',
-                data: pdfBase64,
-              },
-            },
-            { type: 'text', text: prompt },
-          ],
+          content: [contentBlock, { type: 'text', text: prompt }],
         },
       ],
     }),
@@ -126,7 +121,7 @@ async function callClaude(apiKey: string, model: string, prompt: string, pdfBase
   return result.content[0].text;
 }
 
-async function callGemini(apiKey: string, model: string, prompt: string, pdfBase64: string): Promise<string> {
+async function callGemini(apiKey: string, model: string, prompt: string, base64Data: string, mimeType: string = 'application/pdf'): Promise<string> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
   const response = await fetch(url, {
     method: 'POST',
@@ -139,7 +134,7 @@ async function callGemini(apiKey: string, model: string, prompt: string, pdfBase
         {
           parts: [
             { text: prompt },
-            { inline_data: { mime_type: 'application/pdf', data: pdfBase64 } },
+            { inline_data: { mime_type: mimeType, data: base64Data } },
           ],
         },
       ],
@@ -155,7 +150,7 @@ async function callGemini(apiKey: string, model: string, prompt: string, pdfBase
   return result.candidates[0].content.parts[0].text;
 }
 
-async function callOpenAI(apiKey: string, model: string, prompt: string, pdfBase64: string): Promise<string> {
+async function callOpenAI(apiKey: string, model: string, prompt: string, base64Data: string, mimeType: string = 'application/pdf'): Promise<string> {
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -171,7 +166,7 @@ async function callOpenAI(apiKey: string, model: string, prompt: string, pdfBase
             { type: 'text', text: prompt },
             {
               type: 'image_url',
-              image_url: { url: `data:application/pdf;base64,${pdfBase64}` },
+              image_url: { url: `data:${mimeType};base64,${base64Data}` },
             },
           ],
         },
@@ -224,13 +219,17 @@ function parseResponse(text: string): AnalysisResult {
   };
 }
 
-const callers: Record<LLMProvider, (apiKey: string, model: string, prompt: string, pdf: string) => Promise<string>> = {
+const callers: Record<LLMProvider, (apiKey: string, model: string, prompt: string, data: string, mimeType: string) => Promise<string>> = {
   claude: callClaude,
   gemini: callGemini,
   openai: callOpenAI,
 };
 
-export async function analyzePDF(pdfBase64: string): Promise<AnalysisResult> {
+export async function analyzeDocument(base64: string, mimeType: string = 'application/pdf'): Promise<AnalysisResult> {
+  return analyzePDF(base64, mimeType);
+}
+
+export async function analyzePDF(pdfBase64: string, mimeType: string = 'application/pdf'): Promise<AnalysisResult> {
   const config = await getLLMConfig();
   if (!config.apiKey) {
     throw new Error(`${config.provider}のAPIキーが設定されていません。設定画面から入力してください。`);
@@ -244,7 +243,7 @@ export async function analyzePDF(pdfBase64: string): Promise<AnalysisResult> {
 
   let responseText: string;
   try {
-    responseText = await caller(config.apiKey, config.model, prompt, pdfBase64);
+    responseText = await caller(config.apiKey, config.model, prompt, pdfBase64, mimeType);
   } catch (e: any) {
     if (e.message?.includes('Network request failed') || e.message?.includes('fetch')) {
       throw new Error('ネットワーク接続に失敗しました。インターネット接続を確認してください。');

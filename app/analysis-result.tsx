@@ -10,6 +10,8 @@ import {
   updateDocumentCategory,
 } from '../src/db/documents';
 import type { AnalysisResult } from '../src/types';
+import { createCalendarEvent } from '../src/services/google-calendar';
+import { createTask } from '../src/services/google-tasks';
 
 export default function AnalysisResultScreen() {
   const { docId } = useLocalSearchParams<{ docId: string }>();
@@ -17,6 +19,7 @@ export default function AnalysisResultScreen() {
   const [events, setEvents] = useState<any[]>([]);
   const [todos, setTodos] = useState<any[]>([]);
   const [items, setItems] = useState<any[]>([]);
+  const [isRegistering, setIsRegistering] = useState(false);
 
   const loadData = useCallback(async () => {
     const db = await getDatabase();
@@ -56,6 +59,93 @@ export default function AnalysisResultScreen() {
       { text: '削除', style: 'destructive', onPress: async () => { await deleteItem(id); loadData(); } },
     ]);
   };
+
+  const handleRegisterAll = async () => {
+    if (!doc) return;
+    setIsRegistering(true);
+    const driveFileId = doc.drive_file_id || null;
+    let successCount = 0;
+    let errorCount = 0;
+
+    try {
+      // Register events to Google Calendar
+      const db = await getDatabase();
+      for (const e of events) {
+        if (e.calendar_event_id) continue; // Already registered
+        try {
+          const calEventId = await createCalendarEvent({
+            title: e.title,
+            date: e.date,
+            startTime: e.start_time,
+            endTime: e.end_time,
+            location: e.location,
+            targetPerson: e.target_person,
+            description: e.description,
+            driveFileId,
+            documentTitle: doc.title,
+          });
+          await db.runAsync('UPDATE events SET calendar_event_id = ? WHERE id = ?', [calEventId, e.id]);
+          successCount++;
+        } catch (err: any) {
+          console.warn('Event registration failed:', err.message);
+          errorCount++;
+        }
+      }
+
+      // Register TODOs as Google Tasks
+      for (const t of todos) {
+        if (t.task_id) continue;
+        try {
+          const taskId = await createTask({
+            title: t.title,
+            dueDate: t.due_date,
+            targetPerson: t.target_person,
+            description: t.description,
+            driveFileId,
+          });
+          await db.runAsync('UPDATE todos SET task_id = ? WHERE id = ?', [taskId, t.id]);
+          successCount++;
+        } catch (err: any) {
+          console.warn('Todo registration failed:', err.message);
+          errorCount++;
+        }
+      }
+
+      // Register items as Google Tasks
+      for (const i of items) {
+        try {
+          await createTask({
+            title: i.name,
+            dueDate: i.due_date,
+            targetPerson: i.target_person,
+            description: i.description,
+            isItem: true,
+            driveFileId,
+          });
+          successCount++;
+        } catch (err: any) {
+          console.warn('Item registration failed:', err.message);
+          errorCount++;
+        }
+      }
+
+      loadData();
+      if (errorCount === 0) {
+        Alert.alert('登録完了', `${successCount}件をGoogleカレンダー/タスクに登録しました`);
+      } else {
+        Alert.alert('一部登録失敗', `成功: ${successCount}件 / 失敗: ${errorCount}件\nGoogle連携の設定を確認してください`);
+      }
+    } catch (e: any) {
+      Alert.alert('登録エラー', e.message);
+    } finally {
+      setIsRegistering(false);
+    }
+  };
+
+  const hasUnregisteredItems =
+    events.some((e: any) => !e.calendar_event_id) ||
+    todos.some((t: any) => !t.task_id) ||
+    items.length > 0;
 
   if (!doc) {
     return (
@@ -176,6 +266,28 @@ export default function AnalysisResultScreen() {
         </View>
       )}
 
+      {/* Register to Google Calendar/Tasks */}
+      {(events.length > 0 || todos.length > 0 || items.length > 0) && (
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={[styles.registerButton, !hasUnregisteredItems && styles.registerButtonDisabled]}
+            onPress={handleRegisterAll}
+            disabled={isRegistering || !hasUnregisteredItems}
+          >
+            {isRegistering ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Ionicons name="calendar" size={20} color="#fff" />
+            )}
+            <Text style={styles.registerButtonText}>
+              {hasUnregisteredItems
+                ? 'Googleカレンダー/タスクに一括登録'
+                : '登録済み'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <View style={{ height: 40 }} />
     </ScrollView>
   );
@@ -208,4 +320,11 @@ const styles = StyleSheet.create({
   cardMeta: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 1 },
   cardDesc: { fontSize: FontSize.sm, color: Colors.text, marginTop: Spacing.xs },
   summaryText: { fontSize: FontSize.md, color: Colors.text, lineHeight: 24 },
+  registerButton: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.primary, borderRadius: 12, padding: Spacing.md,
+    gap: Spacing.sm,
+  },
+  registerButtonDisabled: { backgroundColor: Colors.textSecondary },
+  registerButtonText: { color: '#fff', fontSize: FontSize.md, fontWeight: '600' },
 });
