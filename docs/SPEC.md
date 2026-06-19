@@ -580,40 +580,38 @@ Googleカレンダー・タスク登録時、descriptionに元PDFのGoogle Drive
 - [x] 履歴画面
 - [x] TypeScript型チェック・Expoビルド通過確認
 
-### Phase 1: コア機能ブラッシュアップ
+### Phase 1: コア機能ブラッシュアップ ✅ 完了
 
+- [x] 解析結果の編集機能（イベント・TODO・持ち物の削除、カテゴリ変更）
+- [x] TODO/持ち物の完了チェック機能（ホーム画面・解析結果画面）
+- [x] 履歴画面の検索・フィルタ（テキスト検索、カテゴリ別フィルタ）
+- [x] エラーハンドリング強化（ネットワーク/認証/レート制限/JSON解析エラーの日本語メッセージ）
+- [x] ホーム画面のTODO・持ち物統合表示
 - [ ] カメラスキャン機能（expo-camera → PDF化）
-- [ ] 解析結果の編集機能（イベント・TODO・持ち物の修正・削除）
-- [ ] TODO/持ち物の完了チェック機能
-- [ ] 履歴画面の検索・フィルタ（子供別、カテゴリ別、日付範囲）
-- [ ] エラーハンドリング強化（ネットワークエラー、API制限）
-- [ ] ローディング・空状態のUI改善
 
-### Phase 2: Google連携
+### Phase 2: Google連携 ✅ サービス層完了
 
-- [ ] Google Sign-In（OAuth 2.0）
-- [ ] Google Drive API連携
-  - **指定フォルダの自動監視**（PDF/画像が追加されたら自動解析 ← GAS版の再現・最優先）
-  - PDFのアップロード・自動リネーム
-  - 画像ファイル対応（JPG/PNG → AI解析）
-- [ ] Google Calendar API連携
-  - 抽出イベントのカレンダー登録
-  - 登録済みイベントの更新・削除
-- [ ] Google Tasks API連携
-  - TODO・持ち物のタスク登録
+- [x] Google Sign-In（OAuth 2.0 via expo-auth-session）
+- [x] Google Drive API連携（ファイル一覧、ダウンロード、アップロード、リネーム）
+- [x] Google Calendar API連携（イベント作成・削除、元資料リンク付き）
+- [x] Google Tasks API連携（タスク作成・完了・削除、TODO/持ち物対応）
+- [x] 画像ファイル対応（JPG/PNG/HEIC → AI解析、全LLMプロバイダー対応）
+- [x] 解析結果画面にカレンダー/タスク一括登録ボタン
+- [x] 設定画面にGoogle認証UI（連携/解除/DriveフォルダID/カレンダーID）
+- [ ] **指定フォルダの自動監視**（PDF/画像が追加されたら自動解析 ← GAS版の再現）
 
-### Phase 3: 通知・配信
+### Phase 3: 通知・配信 ✅ LINE通知完了
 
-- [ ] LINE Messaging API連携（処理結果の通知）
+- [x] LINE Messaging API連携（処理結果の自動通知）
 - [ ] Expo Push Notifications（TODO期限リマインド）
 - [ ] バックグラウンド処理（Google Driveフォルダ監視）
 
 ### Phase 4: 磨き込み・公開準備
 
+- [ ] カメラスキャン機能（expo-camera → PDF化）
 - [ ] UI/UXブラッシュアップ
 - [ ] オンボーディングフロー（初回起動時のセットアップガイド）
 - [ ] 複数ページPDF対応の改善
-- [ ] 画像（写真撮影したプリント）のOCR対応
 - [ ] App Store公開準備（アイコン、スクリーンショット、説明文）
 - [ ] プライバシーポリシー・利用規約
 

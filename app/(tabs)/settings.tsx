@@ -1,8 +1,10 @@
 import { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { useFocusEffect } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize } from '../../src/constants/theme';
 import { getAllSettings, setSetting } from '../../src/db/settings';
+import { signInWithGoogle, isGoogleConnected, disconnectGoogle } from '../../src/services/google-auth';
 import type { AppSettings, LLMProvider } from '../../src/types';
 
 const LLM_OPTIONS: { label: string; value: LLMProvider }[] = [
@@ -13,10 +15,13 @@ const LLM_OPTIONS: { label: string; value: LLMProvider }[] = [
 
 export default function SettingsScreen() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [googleConnected, setGoogleConnected] = useState(false);
+  const [googleClientId, setGoogleClientId] = useState('');
 
   const loadSettings = useCallback(async () => {
     try {
       setSettings(await getAllSettings());
+      setGoogleConnected(await isGoogleConnected());
     } catch { /* */ }
   }, []);
 
@@ -25,6 +30,30 @@ export default function SettingsScreen() {
   const updateSetting = async (key: keyof AppSettings, value: string) => {
     await setSetting(key, value);
     setSettings(prev => prev ? { ...prev, [key]: value } : prev);
+  };
+
+  const handleGoogleSignIn = async () => {
+    if (!googleClientId.trim()) {
+      Alert.alert('入力エラー', 'Google OAuth Client IDを入力してください。\n\nGoogle Cloud Consoleで取得できます。');
+      return;
+    }
+    try {
+      await signInWithGoogle(googleClientId.trim());
+      setGoogleConnected(true);
+      Alert.alert('連携完了', 'Googleアカウントとの連携が完了しました');
+    } catch (e: any) {
+      Alert.alert('認証エラー', e.message);
+    }
+  };
+
+  const handleGoogleDisconnect = () => {
+    Alert.alert('連携解除', 'Google連携を解除しますか？', [
+      { text: 'キャンセル', style: 'cancel' },
+      {
+        text: '解除', style: 'destructive',
+        onPress: async () => { await disconnectGoogle(); setGoogleConnected(false); },
+      },
+    ]);
   };
 
   if (!settings) return null;
@@ -116,6 +145,59 @@ export default function SettingsScreen() {
         )}
       </View>
 
+      {/* Google */}
+      <Text style={styles.sectionTitle}>Google連携</Text>
+      <View style={styles.card}>
+        {googleConnected ? (
+          <>
+            <View style={styles.connectedRow}>
+              <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
+              <Text style={styles.connectedText}>Googleアカウント連携済み</Text>
+            </View>
+            <Text style={styles.hint}>Drive, カレンダー, タスクへのアクセスが有効です</Text>
+
+            <Text style={styles.label}>Drive保存先フォルダID</Text>
+            <TextInput
+              style={styles.input}
+              value={settings.driveFolderId || ''}
+              onChangeText={(v) => updateSetting('driveFolderId', v)}
+              placeholder="Google DriveのフォルダID"
+              autoCapitalize="none"
+            />
+
+            <Text style={styles.label}>カレンダーID</Text>
+            <TextInput
+              style={styles.input}
+              value={settings.calendarId || ''}
+              onChangeText={(v) => updateSetting('calendarId', v)}
+              placeholder="primary（デフォルト）"
+              autoCapitalize="none"
+            />
+
+            <TouchableOpacity style={styles.dangerButton} onPress={handleGoogleDisconnect}>
+              <Text style={styles.dangerButtonText}>連携を解除</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <Text style={styles.label}>Google OAuth Client ID</Text>
+            <TextInput
+              style={styles.input}
+              value={googleClientId}
+              onChangeText={setGoogleClientId}
+              placeholder="xxxxx.apps.googleusercontent.com"
+              autoCapitalize="none"
+            />
+            <Text style={styles.hint}>Google Cloud Consoleでプロジェクトを作成し、OAuth Client IDを取得してください</Text>
+
+            <TouchableOpacity style={styles.button} onPress={handleGoogleSignIn}>
+              <Ionicons name="logo-google" size={18} color="#fff" />
+              <Text style={styles.buttonText}>Googleアカウントと連携</Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
+
       {/* LINE */}
       <Text style={styles.sectionTitle}>LINE通知</Text>
       <View style={styles.card}>
@@ -134,18 +216,7 @@ export default function SettingsScreen() {
           onChangeText={(v) => updateSetting('lineUserId', v)}
           autoCapitalize="none"
         />
-      </View>
-
-      {/* Google */}
-      <Text style={styles.sectionTitle}>Google連携</Text>
-      <View style={styles.card}>
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => Alert.alert('準備中', 'Google認証はPhase 2で実装予定です')}
-        >
-          <Text style={styles.buttonText}>Googleアカウントと連携</Text>
-        </TouchableOpacity>
-        <Text style={styles.hint}>Google Drive, カレンダーとの連携に使用します</Text>
+        <Text style={styles.hint}>LINE Developersでチャネルを作成し、トークンとユーザーIDを設定してください</Text>
       </View>
 
       <View style={{ height: 40 }} />
@@ -171,8 +242,17 @@ const styles = StyleSheet.create({
   segmentText: { fontSize: FontSize.sm, color: Colors.text },
   segmentTextActive: { color: '#fff', fontWeight: '600' },
   button: {
-    backgroundColor: Colors.primary, borderRadius: 8, padding: Spacing.md, alignItems: 'center',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.primary, borderRadius: 8, padding: Spacing.md,
+    marginTop: Spacing.sm, gap: Spacing.sm,
   },
   buttonText: { color: '#fff', fontSize: FontSize.md, fontWeight: '600' },
-  hint: { fontSize: FontSize.xs, color: Colors.textSecondary, marginTop: Spacing.xs, textAlign: 'center' },
+  dangerButton: {
+    backgroundColor: 'transparent', borderRadius: 8, padding: Spacing.sm,
+    marginTop: Spacing.md, alignItems: 'center', borderWidth: 1, borderColor: Colors.danger,
+  },
+  dangerButtonText: { color: Colors.danger, fontSize: FontSize.sm },
+  connectedRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
+  connectedText: { fontSize: FontSize.md, fontWeight: '600', color: Colors.success },
+  hint: { fontSize: FontSize.xs, color: Colors.textSecondary, marginTop: Spacing.xs },
 });
