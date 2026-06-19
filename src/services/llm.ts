@@ -197,7 +197,31 @@ function parseResponse(text: string): AnalysisResult {
   } else if (jsonText.startsWith('```')) {
     jsonText = jsonText.replace(/```\n?/g, '').trim();
   }
-  return JSON.parse(jsonText);
+
+  // Try to find JSON object if response contains extra text
+  if (!jsonText.startsWith('{')) {
+    const match = jsonText.match(/\{[\s\S]*\}/);
+    if (match) jsonText = match[0];
+  }
+
+  let parsed: any;
+  try {
+    parsed = JSON.parse(jsonText);
+  } catch (e) {
+    throw new Error(`AI応答のJSON解析に失敗しました。応答の先頭200文字:\n${text.substring(0, 200)}`);
+  }
+
+  // Validate required fields with defaults
+  return {
+    title: parsed.title || '(タイトル不明)',
+    source: parsed.source || '(発行元不明)',
+    category: parsed.category === 'action_required' ? 'action_required' : 'notice',
+    summary: parsed.summary || '',
+    suggestedFileName: parsed.suggestedFileName || '',
+    events: Array.isArray(parsed.events) ? parsed.events : [],
+    todos: Array.isArray(parsed.todos) ? parsed.todos : [],
+    items: Array.isArray(parsed.items) ? parsed.items : [],
+  };
 }
 
 const callers: Record<LLMProvider, (apiKey: string, model: string, prompt: string, pdf: string) => Promise<string>> = {
@@ -217,6 +241,22 @@ export async function analyzePDF(pdfBase64: string): Promise<AnalysisResult> {
   const prompt = buildPrompt(children, facilities);
 
   const caller = callers[config.provider];
-  const responseText = await caller(config.apiKey, config.model, prompt, pdfBase64);
+
+  let responseText: string;
+  try {
+    responseText = await caller(config.apiKey, config.model, prompt, pdfBase64);
+  } catch (e: any) {
+    if (e.message?.includes('Network request failed') || e.message?.includes('fetch')) {
+      throw new Error('ネットワーク接続に失敗しました。インターネット接続を確認してください。');
+    }
+    if (e.message?.includes('401')) {
+      throw new Error(`${config.provider}のAPIキーが無効です。設定画面で正しいキーを入力してください。`);
+    }
+    if (e.message?.includes('429')) {
+      throw new Error('APIのレート制限に達しました。しばらく待ってから再試行してください。');
+    }
+    throw e;
+  }
+
   return parseResponse(responseText);
 }

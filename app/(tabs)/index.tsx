@@ -4,9 +4,18 @@ import { useFocusEffect, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize } from '../../src/constants/theme';
 import { getDatabase } from '../../src/db/database';
+import { toggleTodoCompleted, toggleItemCompleted } from '../../src/db/documents';
+
+interface PendingItem {
+  id: number;
+  title: string;
+  targetPerson: string;
+  dueDate: string | null;
+  type: 'todo' | 'item';
+}
 
 interface DashboardData {
-  pendingTodos: { id: number; title: string; targetPerson: string; dueDate: string | null }[];
+  pendingItems: PendingItem[];
   upcomingEvents: { id: number; title: string; targetPerson: string; date: string; startTime: string | null }[];
   recentDocs: { id: number; title: string; category: string; createdAt: string }[];
   totalDocs: number;
@@ -14,7 +23,7 @@ interface DashboardData {
 
 export default function HomeScreen() {
   const [data, setData] = useState<DashboardData>({
-    pendingTodos: [],
+    pendingItems: [],
     upcomingEvents: [],
     recentDocs: [],
     totalDocs: 0,
@@ -29,6 +38,9 @@ export default function HomeScreen() {
       const pendingTodos = await db.getAllAsync<any>(
         'SELECT * FROM todos WHERE is_completed = 0 ORDER BY due_date ASC LIMIT 10'
       );
+      const pendingItemsRaw = await db.getAllAsync<any>(
+        'SELECT * FROM items WHERE is_completed = 0 ORDER BY due_date ASC LIMIT 10'
+      );
       const upcomingEvents = await db.getAllAsync<any>(
         'SELECT * FROM events WHERE date >= ? ORDER BY date ASC, start_time ASC LIMIT 10',
         [today]
@@ -38,10 +50,21 @@ export default function HomeScreen() {
       );
       const countResult = await db.getFirstAsync<any>('SELECT COUNT(*) as count FROM documents');
 
-      setData({
-        pendingTodos: pendingTodos.map((r: any) => ({
-          id: r.id, title: r.title, targetPerson: r.target_person, dueDate: r.due_date,
+      const allPending: PendingItem[] = [
+        ...pendingTodos.map((r: any) => ({
+          id: r.id, title: r.title, targetPerson: r.target_person, dueDate: r.due_date, type: 'todo' as const,
         })),
+        ...pendingItemsRaw.map((r: any) => ({
+          id: r.id, title: `[持ち物] ${r.name}`, targetPerson: r.target_person, dueDate: r.due_date, type: 'item' as const,
+        })),
+      ].sort((a, b) => {
+        if (!a.dueDate) return 1;
+        if (!b.dueDate) return -1;
+        return a.dueDate.localeCompare(b.dueDate);
+      });
+
+      setData({
+        pendingItems: allPending,
         upcomingEvents: upcomingEvents.map((r: any) => ({
           id: r.id, title: r.title, targetPerson: r.target_person, date: r.date, startTime: r.start_time,
         })),
@@ -78,21 +101,35 @@ export default function HomeScreen() {
         <Text style={styles.scanButtonText}>プリントをスキャン</Text>
       </TouchableOpacity>
 
-      {/* Pending TODOs */}
+      {/* Pending TODOs & Items */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>未完了のTODO</Text>
-        {data.pendingTodos.length === 0 ? (
+        <Text style={styles.sectionTitle}>未完了のTODO・持ち物</Text>
+        {data.pendingItems.length === 0 ? (
           <Text style={styles.emptyText}>TODOはありません</Text>
         ) : (
-          data.pendingTodos.map((todo) => (
-            <View key={todo.id} style={[styles.card, styles.todoCard]}>
+          data.pendingItems.map((item) => (
+            <TouchableOpacity
+              key={`${item.type}-${item.id}`}
+              style={[styles.card, item.type === 'item' ? styles.itemCard : styles.todoCard]}
+              onPress={async () => {
+                if (item.type === 'todo') await toggleTodoCompleted(item.id);
+                else await toggleItemCompleted(item.id);
+                loadData();
+              }}
+              activeOpacity={0.6}
+            >
+              <Ionicons
+                name={item.type === 'item' ? 'bag-handle-outline' : 'square-outline'}
+                size={22}
+                color={item.type === 'item' ? Colors.success : Colors.warning}
+              />
               <View style={styles.cardContent}>
-                <Text style={styles.cardTitle}>{todo.title}</Text>
+                <Text style={styles.cardTitle}>{item.title}</Text>
                 <Text style={styles.cardMeta}>
-                  {todo.targetPerson}{todo.dueDate ? ` - 期限: ${todo.dueDate}` : ''}
+                  {item.targetPerson}{item.dueDate ? ` - 期限: ${item.dueDate}` : ''}
                 </Text>
               </View>
-            </View>
+            </TouchableOpacity>
           ))
         )}
       </View>
@@ -164,6 +201,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm, borderLeftWidth: 4, borderLeftColor: Colors.border,
   },
   todoCard: { borderLeftColor: Colors.warning },
+  itemCard: { borderLeftColor: Colors.success },
   eventCard: { borderLeftColor: Colors.primary },
   cardContent: { flex: 1 },
   cardRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },

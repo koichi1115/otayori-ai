@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput } from 'react-native';
 import { useFocusEffect, router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize } from '../../src/constants/theme';
 import { getDatabase } from '../../src/db/database';
 
@@ -12,8 +13,12 @@ interface DocRow {
   createdAt: string;
 }
 
+type FilterCategory = 'all' | 'action_required' | 'notice';
+
 export default function HistoryScreen() {
   const [docs, setDocs] = useState<DocRow[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterCategory, setFilterCategory] = useState<FilterCategory>('all');
 
   useFocusEffect(useCallback(() => {
     (async () => {
@@ -30,6 +35,15 @@ export default function HistoryScreen() {
     })();
   }, []));
 
+  const filteredDocs = docs.filter((doc) => {
+    if (filterCategory !== 'all' && doc.category !== filterCategory) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      return doc.title.toLowerCase().includes(q) || doc.source.toLowerCase().includes(q);
+    }
+    return true;
+  });
+
   const renderItem = ({ item }: { item: DocRow }) => (
     <TouchableOpacity
       style={styles.card}
@@ -42,7 +56,7 @@ export default function HistoryScreen() {
         ]}>
           {item.category === 'action_required' ? '要対応' : 'お知らせ'}
         </Text>
-        <Text style={styles.date}>{item.createdAt?.split('T')[0] || ''}</Text>
+        <Text style={styles.date}>{item.createdAt?.split(' ')[0] || ''}</Text>
       </View>
       <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
       <Text style={styles.source}>{item.source}</Text>
@@ -51,14 +65,49 @@ export default function HistoryScreen() {
 
   return (
     <View style={styles.container}>
-      {docs.length === 0 ? (
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <View style={styles.searchBar}>
+          <Ionicons name="search" size={18} color={Colors.textSecondary} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="タイトル・発行元で検索"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            clearButtonMode="while-editing"
+          />
+        </View>
+      </View>
+
+      {/* Category Filter */}
+      <View style={styles.filterRow}>
+        {([
+          { key: 'all', label: 'すべて' },
+          { key: 'action_required', label: '要対応' },
+          { key: 'notice', label: 'お知らせ' },
+        ] as const).map((f) => (
+          <TouchableOpacity
+            key={f.key}
+            style={[styles.filterChip, filterCategory === f.key && styles.filterChipActive]}
+            onPress={() => setFilterCategory(f.key)}
+          >
+            <Text style={[styles.filterText, filterCategory === f.key && styles.filterTextActive]}>
+              {f.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {filteredDocs.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={styles.emptyText}>まだ処理済みプリントがありません</Text>
-          <Text style={styles.emptyHint}>スキャンタブからプリントを取り込みましょう</Text>
+          <Text style={styles.emptyText}>
+            {docs.length === 0 ? 'まだ処理済みプリントがありません' : '条件に一致するプリントがありません'}
+          </Text>
+          {docs.length === 0 && <Text style={styles.emptyHint}>スキャンタブからプリントを取り込みましょう</Text>}
         </View>
       ) : (
         <FlatList
-          data={docs}
+          data={filteredDocs}
           renderItem={renderItem}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={{ padding: Spacing.md }}
@@ -70,6 +119,24 @@ export default function HistoryScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
+  searchContainer: { paddingHorizontal: Spacing.md, paddingTop: Spacing.sm },
+  searchBar: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surface,
+    borderRadius: 10, paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs,
+    gap: Spacing.xs, borderWidth: 1, borderColor: Colors.border,
+  },
+  searchInput: { flex: 1, fontSize: FontSize.md, paddingVertical: Spacing.xs },
+  filterRow: {
+    flexDirection: 'row', paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm,
+    gap: Spacing.xs,
+  },
+  filterChip: {
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
+    backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
+  },
+  filterChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  filterText: { fontSize: FontSize.sm, color: Colors.text },
+  filterTextActive: { color: '#fff', fontWeight: '600' },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyText: { fontSize: FontSize.lg, color: Colors.textSecondary },
   emptyHint: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: Spacing.xs },
