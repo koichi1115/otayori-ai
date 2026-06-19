@@ -8,6 +8,9 @@ import { Colors, Spacing, FontSize } from '../../src/constants/theme';
 import { analyzePDF } from '../../src/services/llm';
 import { sendLineNotification } from '../../src/services/line-notify';
 import { getDatabase } from '../../src/db/database';
+import { syncDriveFolder } from '../../src/services/drive-sync';
+import { isGoogleConnected } from '../../src/services/google-auth';
+import { getSetting } from '../../src/db/settings';
 
 function getMimeType(fileName: string): string {
   const ext = fileName.toLowerCase().split('.').pop();
@@ -140,12 +143,43 @@ export default function ScanScreen() {
         <Text style={styles.optionDesc}>プリントを撮影してPDF化</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.option} onPress={() => Alert.alert('準備中', 'Google Drive連携は設定画面からGoogleアカウントを連携してください')}>
+      <TouchableOpacity style={styles.option} onPress={async () => {
+        const connected = await isGoogleConnected();
+        if (!connected) {
+          Alert.alert('未連携', '設定画面からGoogleアカウントを連携してください');
+          return;
+        }
+        const folderId = await getSetting('driveFolderId');
+        if (!folderId) {
+          Alert.alert('未設定', '設定画面でGoogle DriveのフォルダIDを入力してください');
+          return;
+        }
+        setIsProcessing(true);
+        setStatusText('Google Driveフォルダを同期中...');
+        try {
+          const result = await syncDriveFolder(true);
+          setIsProcessing(false);
+          setStatusText('');
+          if (result.processed === 0 && result.errors === 0) {
+            Alert.alert('同期完了', '新しいファイルはありませんでした');
+          } else {
+            Alert.alert(
+              '同期完了',
+              `処理: ${result.processed}件\nスキップ: ${result.skipped}件\nエラー: ${result.errors}件` +
+              (result.details.length > 0 ? '\n\n' + result.details.join('\n') : '')
+            );
+          }
+        } catch (e: any) {
+          setIsProcessing(false);
+          setStatusText('');
+          Alert.alert('同期エラー', e.message);
+        }
+      }}>
         <View style={[styles.iconCircle, { backgroundColor: '#E8F5E9' }]}>
-          <Ionicons name="cloud" size={32} color={Colors.success} />
+          <Ionicons name="cloud-download" size={32} color={Colors.success} />
         </View>
-        <Text style={styles.optionTitle}>Google Driveから選択</Text>
-        <Text style={styles.optionDesc}>Driveのフォルダから取得</Text>
+        <Text style={styles.optionTitle}>Google Driveから同期</Text>
+        <Text style={styles.optionDesc}>指定フォルダの新しいファイルを一括解析</Text>
       </TouchableOpacity>
     </View>
   );
