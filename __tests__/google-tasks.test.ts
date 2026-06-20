@@ -49,7 +49,7 @@ describe('createTask', () => {
     expect(body.title).toBe('【太郎】書類提出');
     expect(body.due).toBe('2025-06-10T00:00:00.000Z');
     expect(body.notes).toContain('担任に提出');
-    expect(body.notes).toContain('おたよりAI登録');
+    expect(body.notes).toContain('ぷりかん！登録');
   });
 
   it('prefixes item tasks with 【持ち物】', async () => {

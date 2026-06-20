@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/icon.png" width="120" alt="おたよりAI アイコン" />
+  <img src="assets/icon.png" width="120" alt="ぷりかん！ アイコン" />
 </p>
 
-<h1 align="center">おたよりAI</h1>
+<h1 align="center">ぷりかん！</h1>
 
 <p align="center">
   学校・保育園のプリントをAIで自動解析し、予定管理を劇的にラクにするiOSアプリ
@@ -19,7 +19,7 @@
 
 ## 概要
 
-おたよりAIは、保育園・学校・習い事から届くプリント（PDF・画像）をAIで自動解析し、**イベント・TODO・持ち物**を抽出してGoogleカレンダー/タスクに自動登録、LINE通知まで行うiOSアプリです。
+ぷりかん！は、保育園・学校・習い事から届くプリント（PDF・画像）をAIで自動解析し、**イベント・TODO・持ち物**を抽出してGoogleカレンダー/タスクに自動登録、LINE通知まで行うiOSアプリです。
 
 ### 解決する課題
 
@@ -113,7 +113,7 @@ npx expo start
 
 本アプリは [childcare-pdf-summarizer-1](https://github.com/koichi1115/childcare-pdf-summarizer-1) のGoogle Apps Script実装を、iOSネイティブアプリとして再構築したものです。
 
-GAS版では Google Driveフォルダの5分おきポーリング → Gemini解析 → カレンダー/タスク登録 → LINE通知 という一連のフローを実現していましたが、ファイル名の手動変更やカテゴリ仕分けの手間が残っていました。おたよりAIではこれらを全自動化しています。
+GAS版では Google Driveフォルダの5分おきポーリング → Gemini解析 → カレンダー/タスク登録 → LINE通知 という一連のフローを実現していましたが、ファイル名の手動変更やカテゴリ仕分けの手間が残っていました。ぷりかん！ではこれらを全自動化しています。
 
 ## ライセンス
 

@@ -113,7 +113,7 @@ describe('createCalendarEvent', () => {
     expect(body.description).toContain('詳細情報');
     expect(body.description).toContain('https://drive.google.com/open?id=drive-file-123');
     expect(body.description).toContain('6月園だより');
-    expect(body.description).toContain('おたよりAI登録');
+    expect(body.description).toContain('ぷりかん！登録');
   });
 
   it('includes location when provided', async () => {

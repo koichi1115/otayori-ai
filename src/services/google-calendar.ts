@@ -47,7 +47,7 @@ export async function createCalendarEvent(event: {
   if (event.documentTitle) {
     descriptionText += `\n📄 ${event.documentTitle}`;
   }
-  descriptionText += '\n\n📄 おたよりAI登録';
+  descriptionText += '\n\n📄 ぷりかん！登録';
 
   const eventTitle = `【${event.targetPerson}】${event.title}`;
 

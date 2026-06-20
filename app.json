@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "おたよりAI",
+    "name": "ぷりかん！",
     "slug": "otayori-ai",
     "version": "0.1.0",
     "orientation": "portrait",
@@ -19,6 +19,10 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "package": "com.otayori.ai"
+    },
+    "extra": {
+      "claudeApiKey": "${CLAUDE_API_KEY}",
+      "claudeModel": "claude-haiku-4-5-20251001"
     },
     "plugins": [
       "expo-router",

@@ -45,7 +45,7 @@ export async function createTask(task: {
   if (task.driveFileId) {
     notes += `\n\n📎 元資料: ${getDriveFileUrl(task.driveFileId)}`;
   }
-  notes += '\n📄 おたよりAI登録';
+  notes += '\n📄 ぷりかん！登録';
 
   const body: any = {
     title: taskTitle,

@@ -1,5 +1,4 @@
-import type { AnalysisResult, LLMProvider, Child, Facility } from '../types';
-import { getLLMConfig } from '../db/settings';
+import type { AnalysisResult, Child, Facility } from '../types';
 import { getChildren } from '../db/children';
 import { getFacilities } from '../db/facilities';
 
@@ -219,40 +218,35 @@ export function parseResponse(text: string): AnalysisResult {
   };
 }
 
-const callers: Record<LLMProvider, (apiKey: string, model: string, prompt: string, data: string, mimeType: string) => Promise<string>> = {
-  claude: callClaude,
-  gemini: callGemini,
-  openai: callOpenAI,
-};
-
 export async function analyzeDocument(base64: string, mimeType: string = 'application/pdf'): Promise<AnalysisResult> {
   return analyzePDF(base64, mimeType);
 }
 
 export async function analyzePDF(pdfBase64: string, mimeType: string = 'application/pdf'): Promise<AnalysisResult> {
-  const config = await getLLMConfig();
-  if (!config.apiKey) {
-    throw new Error(`${config.provider}のAPIキーが設定されていません。設定画面から入力してください。`);
+  const Constants = require('expo-constants').default;
+  const apiKey = Constants.expoConfig?.extra?.claudeApiKey || process.env.EXPO_PUBLIC_CLAUDE_API_KEY || '';
+  const model = Constants.expoConfig?.extra?.claudeModel || 'claude-haiku-4-5-20251001';
+
+  if (!apiKey) {
+    throw new Error('AI解析の設定に問題があります。アプリを再インストールしてください。');
   }
 
   const children = await getChildren();
   const facilities = await getFacilities();
   const prompt = buildPrompt(children, facilities);
 
-  const caller = callers[config.provider];
-
   let responseText: string;
   try {
-    responseText = await caller(config.apiKey, config.model, prompt, pdfBase64, mimeType);
+    responseText = await callClaude(apiKey, model, prompt, pdfBase64, mimeType);
   } catch (e: any) {
     if (e.message?.includes('Network request failed') || e.message?.includes('fetch')) {
       throw new Error('ネットワーク接続に失敗しました。インターネット接続を確認してください。');
     }
-    if (e.message?.includes('401')) {
-      throw new Error(`${config.provider}のAPIキーが無効です。設定画面で正しいキーを入力してください。`);
+    if (e.message?.includes('401') || e.message?.includes('403')) {
+      throw new Error('AI解析サービスに接続できません。しばらく待ってから再試行してください。');
     }
     if (e.message?.includes('429')) {
-      throw new Error('APIのレート制限に達しました。しばらく待ってから再試行してください。');
+      throw new Error('AIのリクエスト上限に達しました。しばらく待ってから再試行してください。');
     }
     throw e;
   }

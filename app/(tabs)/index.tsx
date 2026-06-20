@@ -103,7 +103,7 @@ export default function HomeScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
     >
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>おたよりAI</Text>
+        <Text style={styles.headerTitle}>ぷりかん！</Text>
         <Text style={styles.headerSubtitle}>処理済み: {data.totalDocs}件</Text>
       </View>
 
