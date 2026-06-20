@@ -3,7 +3,7 @@ import { getLLMConfig } from '../db/settings';
 import { getChildren } from '../db/children';
 import { getFacilities } from '../db/facilities';
 
-function buildPrompt(children: Child[], facilities: Facility[]): string {
+export function buildPrompt(children: Child[], facilities: Facility[]): string {
   const today = new Date().toISOString().split('T')[0];
   const year = new Date().getFullYear();
 
@@ -184,7 +184,7 @@ async function callOpenAI(apiKey: string, model: string, prompt: string, base64D
   return result.choices[0].message.content;
 }
 
-function parseResponse(text: string): AnalysisResult {
+export function parseResponse(text: string): AnalysisResult {
   let jsonText = text.trim();
   // Remove markdown code fences if present
   if (jsonText.startsWith('```json')) {

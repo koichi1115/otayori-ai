@@ -102,7 +102,7 @@ export async function deleteCalendarEvent(eventId: string): Promise<void> {
   });
 }
 
-function addHour(time: string): string {
+export function addHour(time: string): string {
   const [h, m] = time.split(':').map(Number);
   const newH = (h + 1) % 24;
   return `${String(newH).padStart(2, '0')}:${String(m).padStart(2, '0')}`;

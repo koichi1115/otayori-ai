@@ -4,7 +4,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, FontSize } from '../../src/constants/theme';
+import { Colors, Spacing, FontSize, Shadows, BorderRadius } from '../../src/constants/theme';
 import { analyzePDF } from '../../src/services/llm';
 import { sendLineNotification } from '../../src/services/line-notify';
 import { getDatabase } from '../../src/db/database';
@@ -115,19 +115,30 @@ export default function ScanScreen() {
   if (isProcessing) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={styles.loadingText}>{statusText}</Text>
-        <Text style={styles.loadingHint}>プリントの内容をAIが解析しています</Text>
+        <View style={styles.loadingCard}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>{statusText}</Text>
+          <Text style={styles.loadingHint}>プリントの内容をAIが解析しています</Text>
+        </View>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>プリントを取り込む</Text>
-      <Text style={styles.subtitle}>PDF・画像ファイルを選択して、AIが自動で解析します</Text>
+      <View style={styles.headerArea}>
+        <Ionicons name="scan-outline" size={32} color={Colors.primary} />
+        <Text style={styles.title}>プリントを取り込む</Text>
+        <Text style={styles.subtitle}>PDF・画像ファイルを選択して、AIが自動で解析します</Text>
+      </View>
 
-      <TouchableOpacity style={styles.option} onPress={pickDocument}>
+      <TouchableOpacity
+        style={styles.option}
+        onPress={pickDocument}
+        activeOpacity={0.7}
+        accessibilityLabel="ファイルから選択"
+        accessibilityRole="button"
+      >
         <View style={[styles.iconCircle, { backgroundColor: Colors.primaryLight }]}>
           <Ionicons name="document" size={32} color={Colors.primary} />
         </View>
@@ -135,7 +146,13 @@ export default function ScanScreen() {
         <Text style={styles.optionDesc}>PDF・JPG・PNGに対応</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.option} onPress={() => Alert.alert('準備中', 'カメラスキャン機能は次のアップデートで実装予定です')}>
+      <TouchableOpacity
+        style={styles.option}
+        onPress={() => Alert.alert('準備中', 'カメラスキャン機能は次のアップデートで実装予定です')}
+        activeOpacity={0.7}
+        accessibilityLabel="カメラでスキャン"
+        accessibilityRole="button"
+      >
         <View style={[styles.iconCircle, { backgroundColor: '#FFF3E0' }]}>
           <Ionicons name="camera" size={32} color={Colors.secondary} />
         </View>
@@ -143,38 +160,44 @@ export default function ScanScreen() {
         <Text style={styles.optionDesc}>プリントを撮影してPDF化</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.option} onPress={async () => {
-        const connected = await isGoogleConnected();
-        if (!connected) {
-          Alert.alert('未連携', '設定画面からGoogleアカウントを連携してください');
-          return;
-        }
-        const folderId = await getSetting('driveFolderId');
-        if (!folderId) {
-          Alert.alert('未設定', '設定画面でGoogle DriveのフォルダIDを入力してください');
-          return;
-        }
-        setIsProcessing(true);
-        setStatusText('Google Driveフォルダを同期中...');
-        try {
-          const result = await syncDriveFolder(true);
-          setIsProcessing(false);
-          setStatusText('');
-          if (result.processed === 0 && result.errors === 0) {
-            Alert.alert('同期完了', '新しいファイルはありませんでした');
-          } else {
-            Alert.alert(
-              '同期完了',
-              `処理: ${result.processed}件\nスキップ: ${result.skipped}件\nエラー: ${result.errors}件` +
-              (result.details.length > 0 ? '\n\n' + result.details.join('\n') : '')
-            );
+      <TouchableOpacity
+        style={styles.option}
+        activeOpacity={0.7}
+        accessibilityLabel="Google Driveから同期"
+        accessibilityRole="button"
+        onPress={async () => {
+          const connected = await isGoogleConnected();
+          if (!connected) {
+            Alert.alert('未連携', '設定画面からGoogleアカウントを連携してください');
+            return;
           }
-        } catch (e: any) {
-          setIsProcessing(false);
-          setStatusText('');
-          Alert.alert('同期エラー', e.message);
-        }
-      }}>
+          const folderId = await getSetting('driveFolderId');
+          if (!folderId) {
+            Alert.alert('未設定', '設定画面でGoogle DriveのフォルダIDを入力してください');
+            return;
+          }
+          setIsProcessing(true);
+          setStatusText('Google Driveフォルダを同期中...');
+          try {
+            const result = await syncDriveFolder(true);
+            setIsProcessing(false);
+            setStatusText('');
+            if (result.processed === 0 && result.errors === 0) {
+              Alert.alert('同期完了', '新しいファイルはありませんでした');
+            } else {
+              Alert.alert(
+                '同期完了',
+                `処理: ${result.processed}件\nスキップ: ${result.skipped}件\nエラー: ${result.errors}件` +
+                (result.details.length > 0 ? '\n\n' + result.details.join('\n') : '')
+              );
+            }
+          } catch (e: any) {
+            setIsProcessing(false);
+            setStatusText('');
+            Alert.alert('同期エラー', e.message);
+          }
+        }}
+      >
         <View style={[styles.iconCircle, { backgroundColor: '#E8F5E9' }]}>
           <Ionicons name="cloud-download" size={32} color={Colors.success} />
         </View>
@@ -187,11 +210,13 @@ export default function ScanScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background, padding: Spacing.lg },
-  title: { fontSize: FontSize.xl, fontWeight: 'bold', color: Colors.text, marginBottom: Spacing.xs },
-  subtitle: { fontSize: FontSize.md, color: Colors.textSecondary, marginBottom: Spacing.lg },
+  headerArea: { alignItems: 'center', marginBottom: Spacing.lg },
+  title: { fontSize: FontSize.xl, fontWeight: 'bold', color: Colors.text, marginTop: Spacing.sm },
+  subtitle: { fontSize: FontSize.md, color: Colors.textSecondary, marginTop: Spacing.xs, textAlign: 'center' },
   option: {
-    backgroundColor: Colors.surface, borderRadius: 12, padding: Spacing.lg,
+    backgroundColor: Colors.surface, borderRadius: BorderRadius.lg, padding: Spacing.lg,
     marginBottom: Spacing.md, alignItems: 'center',
+    ...Shadows.md,
   },
   iconCircle: {
     width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center',
@@ -199,7 +224,12 @@ const styles = StyleSheet.create({
   },
   optionTitle: { fontSize: FontSize.lg, fontWeight: '600', color: Colors.text },
   optionDesc: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 2 },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background },
-  loadingText: { fontSize: FontSize.lg, color: Colors.text, marginTop: Spacing.md },
-  loadingHint: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: Spacing.xs },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background, padding: Spacing.lg },
+  loadingCard: {
+    backgroundColor: Colors.surface, borderRadius: BorderRadius.lg, padding: Spacing.xl,
+    alignItems: 'center', width: '100%',
+    ...Shadows.md,
+  },
+  loadingText: { fontSize: FontSize.lg, fontWeight: '600', color: Colors.text, marginTop: Spacing.lg },
+  loadingHint: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: Spacing.sm },
 });

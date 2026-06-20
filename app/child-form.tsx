@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Colors, Spacing, FontSize } from '../src/constants/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { Colors, Spacing, FontSize, Shadows, BorderRadius } from '../src/constants/theme';
 import { getChild, createChild, updateChild } from '../src/db/children';
 import { getFacilities } from '../src/db/facilities';
 import type { Facility } from '../src/types';
@@ -46,52 +47,104 @@ export default function ChildFormScreen() {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.label}>名前 *</Text>
-      <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="例: 太郎" />
+    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
+      <View style={styles.card}>
+        <Text style={styles.label}>名前 *</Text>
+        <TextInput
+          style={styles.input}
+          value={name}
+          onChangeText={setName}
+          placeholder="例: 太郎"
+          placeholderTextColor={Colors.textSecondary}
+          accessibilityLabel="子供の名前"
+        />
 
-      <Text style={styles.label}>性別</Text>
-      <View style={styles.segmented}>
-        <TouchableOpacity
-          style={[styles.segment, gender === 'male' && styles.segmentActive]}
-          onPress={() => setGender('male')}
-        >
-          <Text style={[styles.segmentText, gender === 'male' && styles.segmentTextActive]}>男の子</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.segment, gender === 'female' && styles.segmentActive]}
-          onPress={() => setGender('female')}
-        >
-          <Text style={[styles.segmentText, gender === 'female' && styles.segmentTextActive]}>女の子</Text>
-        </TouchableOpacity>
+        <Text style={styles.label}>性別</Text>
+        <View style={styles.segmented}>
+          <TouchableOpacity
+            style={[styles.segment, gender === 'male' && styles.segmentActiveMale]}
+            onPress={() => setGender('male')}
+            activeOpacity={0.7}
+            accessibilityLabel="男の子"
+            accessibilityRole="button"
+          >
+            <Ionicons name="male" size={16} color={gender === 'male' ? '#fff' : '#1976D2'} />
+            <Text style={[styles.segmentText, gender === 'male' && styles.segmentTextActive]}>男の子</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.segment, gender === 'female' && styles.segmentActiveFemale]}
+            onPress={() => setGender('female')}
+            activeOpacity={0.7}
+            accessibilityLabel="女の子"
+            accessibilityRole="button"
+          >
+            <Ionicons name="female" size={16} color={gender === 'female' ? '#fff' : '#C2185B'} />
+            <Text style={[styles.segmentText, gender === 'female' && styles.segmentTextActive]}>女の子</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.label}>生年月日 * (YYYY-MM-DD)</Text>
+        <TextInput
+          style={styles.input}
+          value={birthdate}
+          onChangeText={setBirthdate}
+          placeholder="2020-04-01"
+          placeholderTextColor={Colors.textSecondary}
+          keyboardType="numbers-and-punctuation"
+          accessibilityLabel="生年月日"
+        />
+
+        <Text style={styles.label}>クラス名</Text>
+        <TextInput
+          style={styles.input}
+          value={className}
+          onChangeText={setClassName}
+          placeholder="例: ぱんだ組"
+          placeholderTextColor={Colors.textSecondary}
+          accessibilityLabel="クラス名"
+        />
       </View>
 
-      <Text style={styles.label}>生年月日 * (YYYY-MM-DD)</Text>
-      <TextInput style={styles.input} value={birthdate} onChangeText={setBirthdate} placeholder="2020-04-01" keyboardType="numbers-and-punctuation" />
+      <View style={styles.card}>
+        <Text style={styles.label}>所属施設</Text>
+        {facilities.length === 0 ? (
+          <View style={styles.noFacility}>
+            <Ionicons name="information-circle-outline" size={18} color={Colors.textSecondary} />
+            <Text style={styles.hint}>先に施設を登録してください</Text>
+          </View>
+        ) : (
+          <View style={styles.facilityList}>
+            {facilities.map((f) => (
+              <TouchableOpacity
+                key={f.id}
+                style={[styles.facilityOption, facilityId === f.id && styles.facilityOptionActive]}
+                onPress={() => setFacilityId(facilityId === f.id ? null : f.id)}
+                activeOpacity={0.7}
+                accessibilityLabel={`${f.name}を選択`}
+                accessibilityRole="button"
+              >
+                <Ionicons
+                  name={facilityId === f.id ? 'checkmark-circle' : 'ellipse-outline'}
+                  size={20}
+                  color={facilityId === f.id ? Colors.primary : Colors.textSecondary}
+                />
+                <Text style={[styles.facilityText, facilityId === f.id && styles.facilityTextActive]}>
+                  {f.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </View>
 
-      <Text style={styles.label}>クラス名</Text>
-      <TextInput style={styles.input} value={className} onChangeText={setClassName} placeholder="例: ぱんだ組" />
-
-      <Text style={styles.label}>所属施設</Text>
-      {facilities.length === 0 ? (
-        <Text style={styles.hint}>先に施設を登録してください</Text>
-      ) : (
-        <View style={styles.facilityList}>
-          {facilities.map((f) => (
-            <TouchableOpacity
-              key={f.id}
-              style={[styles.facilityOption, facilityId === f.id && styles.facilityOptionActive]}
-              onPress={() => setFacilityId(f.id)}
-            >
-              <Text style={[styles.facilityText, facilityId === f.id && styles.facilityTextActive]}>
-                {f.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-
-      <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+      <TouchableOpacity
+        style={styles.saveButton}
+        onPress={handleSave}
+        activeOpacity={0.7}
+        accessibilityLabel={isEdit ? '子供の情報を更新' : '子供を追加'}
+        accessibilityRole="button"
+      >
+        <Ionicons name={isEdit ? 'checkmark' : 'add'} size={20} color="#fff" />
         <Text style={styles.saveButtonText}>{isEdit ? '更新' : '追加'}</Text>
       </TouchableOpacity>
 
@@ -101,32 +154,43 @@ export default function ChildFormScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background, padding: Spacing.lg },
-  label: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: Spacing.md, marginBottom: Spacing.xs },
-  input: {
-    borderWidth: 1, borderColor: Colors.border, borderRadius: 8, padding: Spacing.sm,
-    fontSize: FontSize.md, backgroundColor: Colors.surface,
+  container: { flex: 1, backgroundColor: Colors.background, padding: Spacing.md },
+  card: {
+    backgroundColor: Colors.surface, borderRadius: BorderRadius.md, padding: Spacing.md,
+    marginBottom: Spacing.md,
+    ...Shadows.sm,
   },
-  segmented: { flexDirection: 'row', gap: Spacing.xs },
+  label: { fontSize: FontSize.sm, fontWeight: '500', color: Colors.textSecondary, marginTop: Spacing.md, marginBottom: Spacing.xs },
+  input: {
+    borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.sm, padding: Spacing.sm,
+    fontSize: FontSize.md, backgroundColor: Colors.background, color: Colors.text,
+  },
+  segmented: { flexDirection: 'row', gap: Spacing.sm },
   segment: {
-    flex: 1, paddingVertical: Spacing.sm, borderRadius: 8, alignItems: 'center',
+    flex: 1, flexDirection: 'row', paddingVertical: Spacing.sm, borderRadius: BorderRadius.sm,
+    alignItems: 'center', justifyContent: 'center', gap: Spacing.xs,
     backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
   },
-  segmentActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  segmentActiveMale: { backgroundColor: '#1976D2', borderColor: '#1976D2' },
+  segmentActiveFemale: { backgroundColor: '#C2185B', borderColor: '#C2185B' },
   segmentText: { fontSize: FontSize.md, color: Colors.text },
   segmentTextActive: { color: '#fff', fontWeight: '600' },
+  noFacility: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, paddingVertical: Spacing.sm },
   hint: { fontSize: FontSize.sm, color: Colors.textSecondary },
   facilityList: { gap: Spacing.xs },
   facilityOption: {
-    padding: Spacing.sm, borderRadius: 8, backgroundColor: Colors.surface,
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
+    padding: Spacing.sm, borderRadius: BorderRadius.sm, backgroundColor: Colors.background,
     borderWidth: 1, borderColor: Colors.border,
   },
   facilityOptionActive: { borderColor: Colors.primary, backgroundColor: Colors.primaryLight },
   facilityText: { fontSize: FontSize.md, color: Colors.text },
   facilityTextActive: { color: Colors.primary, fontWeight: '600' },
   saveButton: {
-    backgroundColor: Colors.primary, borderRadius: 10, padding: Spacing.md,
-    alignItems: 'center', marginTop: Spacing.lg,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm,
+    backgroundColor: Colors.primary, borderRadius: BorderRadius.md, padding: Spacing.md,
+    marginTop: Spacing.sm,
+    ...Shadows.md,
   },
   saveButtonText: { color: '#fff', fontSize: FontSize.lg, fontWeight: '600' },
 });

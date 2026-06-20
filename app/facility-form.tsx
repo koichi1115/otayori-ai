@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Colors, Spacing, FontSize } from '../src/constants/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { Colors, Spacing, FontSize, Shadows, BorderRadius } from '../src/constants/theme';
 import { getFacility, createFacility, updateFacility } from '../src/db/facilities';
 
-const FACILITY_TYPES = [
-  { label: '保育園', value: 'nursery' as const },
-  { label: '学校', value: 'school' as const },
-  { label: '習い事', value: 'lesson' as const },
+const FACILITY_TYPES: { label: string; value: 'nursery' | 'school' | 'lesson'; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { label: '保育園', value: 'nursery', icon: 'happy-outline' },
+  { label: '学校', value: 'school', icon: 'school-outline' },
+  { label: '習い事', value: 'lesson', icon: 'musical-notes-outline' },
 ];
 
 export default function FacilityFormScreen() {
@@ -45,39 +46,72 @@ export default function FacilityFormScreen() {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.label}>施設名 *</Text>
-      <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="例: ○○保育園" />
+    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
+      <View style={styles.card}>
+        <Text style={styles.label}>施設名 *</Text>
+        <TextInput
+          style={styles.input}
+          value={name}
+          onChangeText={setName}
+          placeholder="例: ○○保育園"
+          placeholderTextColor={Colors.textSecondary}
+          accessibilityLabel="施設名"
+        />
 
-      <Text style={styles.label}>種別</Text>
-      <View style={styles.segmented}>
-        {FACILITY_TYPES.map((opt) => (
-          <TouchableOpacity
-            key={opt.value}
-            style={[styles.segment, type === opt.value && styles.segmentActive]}
-            onPress={() => setType(opt.value)}
-          >
-            <Text style={[styles.segmentText, type === opt.value && styles.segmentTextActive]}>
-              {opt.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        <Text style={styles.label}>種別</Text>
+        <View style={styles.segmented}>
+          {FACILITY_TYPES.map((opt) => (
+            <TouchableOpacity
+              key={opt.value}
+              style={[styles.segment, type === opt.value && styles.segmentActive]}
+              onPress={() => setType(opt.value)}
+              activeOpacity={0.7}
+              accessibilityLabel={`${opt.label}を選択`}
+              accessibilityRole="button"
+            >
+              <Ionicons
+                name={opt.icon}
+                size={18}
+                color={type === opt.value ? '#fff' : Colors.text}
+              />
+              <Text style={[styles.segmentText, type === opt.value && styles.segmentTextActive]}>
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={styles.label}>住所</Text>
+        <TextInput
+          style={styles.input}
+          value={address}
+          onChangeText={setAddress}
+          placeholder="例: 東京都○○区..."
+          placeholderTextColor={Colors.textSecondary}
+          accessibilityLabel="施設の住所"
+        />
+
+        <Text style={styles.label}>備考</Text>
+        <TextInput
+          style={[styles.input, styles.textArea]}
+          value={notes}
+          onChangeText={setNotes}
+          placeholder="例: レッスン日時 毎週土曜 16:30~17:00"
+          placeholderTextColor={Colors.textSecondary}
+          multiline
+          numberOfLines={4}
+          accessibilityLabel="備考"
+        />
       </View>
 
-      <Text style={styles.label}>住所</Text>
-      <TextInput style={styles.input} value={address} onChangeText={setAddress} placeholder="例: 東京都○○区..." />
-
-      <Text style={styles.label}>備考</Text>
-      <TextInput
-        style={[styles.input, styles.textArea]}
-        value={notes}
-        onChangeText={setNotes}
-        placeholder="例: レッスン日時 毎週土曜 16:30〜17:00"
-        multiline
-        numberOfLines={4}
-      />
-
-      <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+      <TouchableOpacity
+        style={styles.saveButton}
+        onPress={handleSave}
+        activeOpacity={0.7}
+        accessibilityLabel={isEdit ? '施設情報を更新' : '施設を追加'}
+        accessibilityRole="button"
+      >
+        <Ionicons name={isEdit ? 'checkmark' : 'add'} size={20} color="#fff" />
         <Text style={styles.saveButtonText}>{isEdit ? '更新' : '追加'}</Text>
       </TouchableOpacity>
 
@@ -87,24 +121,32 @@ export default function FacilityFormScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background, padding: Spacing.lg },
-  label: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: Spacing.md, marginBottom: Spacing.xs },
+  container: { flex: 1, backgroundColor: Colors.background, padding: Spacing.md },
+  card: {
+    backgroundColor: Colors.surface, borderRadius: BorderRadius.md, padding: Spacing.md,
+    marginBottom: Spacing.md,
+    ...Shadows.sm,
+  },
+  label: { fontSize: FontSize.sm, fontWeight: '500', color: Colors.textSecondary, marginTop: Spacing.md, marginBottom: Spacing.xs },
   input: {
-    borderWidth: 1, borderColor: Colors.border, borderRadius: 8, padding: Spacing.sm,
-    fontSize: FontSize.md, backgroundColor: Colors.surface,
+    borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.sm, padding: Spacing.sm,
+    fontSize: FontSize.md, backgroundColor: Colors.background, color: Colors.text,
   },
   textArea: { height: 100, textAlignVertical: 'top' },
   segmented: { flexDirection: 'row', gap: Spacing.xs },
   segment: {
-    flex: 1, paddingVertical: Spacing.sm, borderRadius: 8, alignItems: 'center',
+    flex: 1, flexDirection: 'row', paddingVertical: Spacing.sm, borderRadius: BorderRadius.sm,
+    alignItems: 'center', justifyContent: 'center', gap: Spacing.xs,
     backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
   },
   segmentActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   segmentText: { fontSize: FontSize.md, color: Colors.text },
   segmentTextActive: { color: '#fff', fontWeight: '600' },
   saveButton: {
-    backgroundColor: Colors.primary, borderRadius: 10, padding: Spacing.md,
-    alignItems: 'center', marginTop: Spacing.lg,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm,
+    backgroundColor: Colors.primary, borderRadius: BorderRadius.md, padding: Spacing.md,
+    marginTop: Spacing.sm,
+    ...Shadows.md,
   },
   saveButtonText: { color: '#fff', fontSize: FontSize.lg, fontWeight: '600' },
 });
