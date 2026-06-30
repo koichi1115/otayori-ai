@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, ScrollView } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { router } from 'expo-router';
@@ -125,7 +125,11 @@ export default function ScanScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.headerArea}>
         <Ionicons name="scan-outline" size={32} color={Colors.primary} />
         <Text style={styles.title}>プリントを取り込む</Text>
@@ -204,12 +208,13 @@ export default function ScanScreen() {
         <Text style={styles.optionTitle}>Google Driveから同期</Text>
         <Text style={styles.optionDesc}>指定フォルダの新しいファイルを一括解析</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background, padding: Spacing.lg },
+  container: { flex: 1, backgroundColor: Colors.background },
+  content: { padding: Spacing.lg, paddingBottom: Spacing.xl },
   headerArea: { alignItems: 'center', marginBottom: Spacing.lg },
   title: { fontSize: FontSize.xl, fontWeight: 'bold', color: Colors.text, marginTop: Spacing.sm },
   subtitle: { fontSize: FontSize.md, color: Colors.textSecondary, marginTop: Spacing.xs, textAlign: 'center' },
