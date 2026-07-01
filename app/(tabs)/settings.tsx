@@ -1,17 +1,21 @@
 import { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, ActivityIndicator, Linking } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import { Colors, Spacing, FontSize, Shadows, BorderRadius } from '../../src/constants/theme';
 import { getAllSettings, setSetting } from '../../src/db/settings';
 import { signInWithGoogle, isGoogleConnected, disconnectGoogle } from '../../src/services/google-auth';
 import type { AppSettings } from '../../src/types';
 
+// LINE公式アカウントの友だち追加URL（後で実際のURLに置き換え）
+const LINE_FRIEND_ADD_URL = 'https://line.me/R/ti/p/@760llvzb';
+
 export default function SettingsScreen() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [googleConnected, setGoogleConnected] = useState(false);
-  const [googleClientId, setGoogleClientId] = useState('');
   const [loading, setLoading] = useState(true);
+  const [signingIn, setSigningIn] = useState(false);
 
   const loadSettings = useCallback(async () => {
     try {
@@ -30,21 +34,25 @@ export default function SettingsScreen() {
   };
 
   const handleGoogleSignIn = async () => {
-    if (!googleClientId.trim()) {
-      Alert.alert('入力エラー', 'Google OAuth Client IDを入力してください。\n\nGoogle Cloud Consoleで取得できます。');
+    const clientId = Constants.expoConfig?.extra?.googleOAuthClientId;
+    if (!clientId) {
+      Alert.alert('設定エラー', 'Google OAuth Client IDが設定されていません');
       return;
     }
+    setSigningIn(true);
     try {
-      await signInWithGoogle(googleClientId.trim());
+      await signInWithGoogle(clientId);
       setGoogleConnected(true);
       Alert.alert('連携完了', 'Googleアカウントとの連携が完了しました');
     } catch (e: any) {
       Alert.alert('認証エラー', e.message);
+    } finally {
+      setSigningIn(false);
     }
   };
 
   const handleGoogleDisconnect = () => {
-    Alert.alert('連携解除', 'Google連携を解除しますか？\nDrive・カレンダー・タスクへのアクセスが無効になります。', [
+    Alert.alert('連携解除', 'Google連携を解除しますか？\nDrive・カレンダーへのアクセスが無効になります。', [
       { text: 'キャンセル', style: 'cancel' },
       {
         text: '解除', style: 'destructive',
@@ -52,6 +60,9 @@ export default function SettingsScreen() {
       },
     ]);
   };
+
+  const lineRoomId = settings?.lineUserId || '';
+  const isLineConnected = !!lineRoomId;
 
   if (loading || !settings) {
     return (
@@ -75,29 +86,7 @@ export default function SettingsScreen() {
               <View style={styles.statusDot} />
               <Text style={styles.connectedText}>Googleアカウント連携済み</Text>
             </View>
-            <Text style={styles.hint}>Drive, カレンダー, タスクへのアクセスが有効です</Text>
-
-            <Text style={styles.label}>Drive保存先フォルダID</Text>
-            <TextInput
-              style={styles.input}
-              value={settings.driveFolderId || ''}
-              onChangeText={(v) => updateSetting('driveFolderId', v)}
-              placeholder="Google DriveのフォルダID"
-              placeholderTextColor={Colors.textSecondary}
-              autoCapitalize="none"
-              accessibilityLabel="DriveフォルダID"
-            />
-
-            <Text style={styles.label}>カレンダーID</Text>
-            <TextInput
-              style={styles.input}
-              value={settings.calendarId || ''}
-              onChangeText={(v) => updateSetting('calendarId', v)}
-              placeholder="primary（デフォルト）"
-              placeholderTextColor={Colors.textSecondary}
-              autoCapitalize="none"
-              accessibilityLabel="カレンダーID"
-            />
+            <Text style={styles.hint}>Drive, カレンダーへのアクセスが有効です</Text>
 
             <TouchableOpacity
               style={styles.dangerButton}
@@ -112,27 +101,21 @@ export default function SettingsScreen() {
           </>
         ) : (
           <>
-            <Text style={styles.label}>Google OAuth Client ID</Text>
-            <TextInput
-              style={styles.input}
-              value={googleClientId}
-              onChangeText={setGoogleClientId}
-              placeholder="xxxxx.apps.googleusercontent.com"
-              placeholderTextColor={Colors.textSecondary}
-              autoCapitalize="none"
-              accessibilityLabel="Google OAuth Client ID"
-            />
-            <Text style={styles.hint}>Google Cloud Consoleでプロジェクトを作成し、OAuth Client IDを取得してください</Text>
-
+            <Text style={styles.descText}>Googleアカウントと連携すると、プリントのDrive保存やカレンダー登録ができます。</Text>
             <TouchableOpacity
-              style={styles.button}
+              style={[styles.button, signingIn && { opacity: 0.6 }]}
               onPress={handleGoogleSignIn}
               activeOpacity={0.7}
+              disabled={signingIn}
               accessibilityLabel="Googleアカウントと連携"
               accessibilityRole="button"
             >
-              <Ionicons name="logo-google" size={18} color="#fff" />
-              <Text style={styles.buttonText}>Googleアカウントと連携</Text>
+              {signingIn ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Ionicons name="logo-google" size={18} color="#fff" />
+              )}
+              <Text style={styles.buttonText}>{signingIn ? '認証中...' : 'Googleアカウントと連携'}</Text>
             </TouchableOpacity>
           </>
         )}
@@ -144,27 +127,91 @@ export default function SettingsScreen() {
         <Text style={styles.sectionTitle}>LINE通知</Text>
       </View>
       <View style={styles.card}>
-        <Text style={styles.label}>Channel Access Token</Text>
-        <TextInput
-          style={styles.input}
-          value={settings.lineChannelAccessToken || ''}
-          onChangeText={(v) => updateSetting('lineChannelAccessToken', v)}
-          placeholderTextColor={Colors.textSecondary}
-          secureTextEntry
-          autoCapitalize="none"
-          accessibilityLabel="LINE Channel Access Token"
-        />
-        <Text style={styles.label}>User ID</Text>
-        <TextInput
-          style={styles.input}
-          value={settings.lineUserId || ''}
-          onChangeText={(v) => updateSetting('lineUserId', v)}
-          placeholderTextColor={Colors.textSecondary}
-          autoCapitalize="none"
-          accessibilityLabel="LINE User ID"
-        />
-        <Text style={styles.hint}>LINE Developersでチャネルを作成し、トークンとユーザーIDを設定してください</Text>
+        {isLineConnected ? (
+          <>
+            <View style={styles.connectedRow}>
+              <View style={styles.statusDot} />
+              <Text style={styles.connectedText}>LINE通知 設定済み</Text>
+            </View>
+            <Text style={styles.hint}>ルームID: {lineRoomId}</Text>
+
+            <TouchableOpacity
+              style={styles.dangerButton}
+              onPress={() => {
+                Alert.alert('LINE連携を解除', 'ルームIDを削除しますか？', [
+                  { text: 'キャンセル', style: 'cancel' },
+                  { text: '解除', style: 'destructive', onPress: () => updateSetting('lineUserId', '') },
+                ]);
+              }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="unlink-outline" size={16} color={Colors.danger} />
+              <Text style={styles.dangerButtonText}>連携を解除</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <Text style={styles.descText}>LINE公式アカウントを友だち追加すると、プリントの通知をLINEで受け取れます。</Text>
+
+            <TouchableOpacity
+              style={styles.lineButton}
+              onPress={() => Linking.openURL(LINE_FRIEND_ADD_URL)}
+              activeOpacity={0.7}
+              accessibilityLabel="LINE公式アカウントを友だち追加"
+              accessibilityRole="button"
+            >
+              <Ionicons name="chatbubble" size={18} color="#fff" />
+              <Text style={styles.buttonText}>友だち追加</Text>
+            </TouchableOpacity>
+
+            <Text style={[styles.label, { marginTop: Spacing.lg }]}>ルームID</Text>
+            <Text style={styles.hint}>友だち追加後、公式アカウントからルームIDが届きます。そのIDを入力してください。</Text>
+            <TextInput
+              style={[styles.input, { marginTop: Spacing.xs }]}
+              value={settings.lineUserId || ''}
+              onChangeText={(v) => updateSetting('lineUserId', v)}
+              placeholder="ルームIDを入力"
+              placeholderTextColor={Colors.textSecondary}
+              autoCapitalize="none"
+              accessibilityLabel="LINEルームID"
+            />
+          </>
+        )}
       </View>
+
+      {/* Reminder */}
+      {isLineConnected && (
+        <>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="notifications-outline" size={20} color={Colors.text} />
+            <Text style={styles.sectionTitle}>リマインダー</Text>
+          </View>
+          <View style={styles.card}>
+            <Text style={styles.descText}>期限のあるTODO・持ち物をLINEで事前通知します。</Text>
+            <Text style={styles.label}>何日前に通知する？</Text>
+            <View style={styles.reminderOptions}>
+              {['1', '2', '3', '5', '7'].map((d) => (
+                <TouchableOpacity
+                  key={d}
+                  style={[
+                    styles.reminderChip,
+                    settings.reminderDaysBefore === d && styles.reminderChipActive,
+                  ]}
+                  onPress={() => updateSetting('reminderDaysBefore', d)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[
+                    styles.reminderChipText,
+                    settings.reminderDaysBefore === d && styles.reminderChipTextActive,
+                  ]}>
+                    {d}日前
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </>
+      )}
 
       <View style={{ height: 40 }} />
     </ScrollView>
@@ -205,5 +252,25 @@ const styles = StyleSheet.create({
   connectedRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   statusDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: Colors.success },
   connectedText: { fontSize: FontSize.md, fontWeight: '600', color: Colors.success },
+  descText: { fontSize: FontSize.sm, color: Colors.textSecondary, lineHeight: 20, marginBottom: Spacing.sm },
   hint: { fontSize: FontSize.xs, color: Colors.textSecondary, marginTop: Spacing.xs, lineHeight: 16 },
+  lineButton: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#06C755', borderRadius: BorderRadius.sm, padding: Spacing.md,
+    gap: Spacing.sm,
+    ...Shadows.sm,
+  },
+  reminderOptions: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginTop: Spacing.xs,
+  },
+  reminderChip: {
+    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.sm, borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: Colors.background,
+  },
+  reminderChipActive: {
+    backgroundColor: Colors.primary, borderColor: Colors.primary,
+  },
+  reminderChipText: { fontSize: FontSize.md, color: Colors.text, fontWeight: '500' },
+  reminderChipTextActive: { color: '#fff' },
 });

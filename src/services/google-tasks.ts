@@ -1,12 +1,10 @@
-import { getSetting } from '../db/settings';
+import { getValidAccessToken } from './google-auth';
 import { getDriveFileUrl } from './google-drive';
 
 const TASKS_API = 'https://tasks.googleapis.com/tasks/v1';
 
 async function getAccessToken(): Promise<string> {
-  const token = await getSetting('googleAccessToken');
-  if (!token) throw new Error('Googleアカウントと連携してください。');
-  return token;
+  return getValidAccessToken();
 }
 
 /**

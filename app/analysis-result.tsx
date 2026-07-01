@@ -1,17 +1,69 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Alert, Linking, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { File } from 'expo-file-system';
 import { Colors, Spacing, FontSize, Shadows, BorderRadius } from '../src/constants/theme';
 import { getDatabase } from '../src/db/database';
 import {
   toggleTodoCompleted, toggleItemCompleted,
   deleteTodo, deleteItem, deleteEvent,
   updateDocumentCategory,
+  updateTodo, updateItem, updateEvent,
 } from '../src/db/documents';
 import type { AnalysisResult } from '../src/types';
 import { createCalendarEvent } from '../src/services/google-calendar';
 import { createTask } from '../src/services/google-tasks';
+import { registerReminder } from '../src/services/reminder';
+
+function renderSummary(text: string) {
+  if (!text) return null;
+  const lines = text.split('\n');
+  return lines.map((line, i) => {
+    const trimmed = line.trim();
+    if (!trimmed) return <View key={i} style={{ height: 8 }} />;
+
+    // 箇条書き（・、-、・ で始まる行）
+    const bulletMatch = trimmed.match(/^[・\-\u2022\u25CF]\s*(.*)/);
+    if (bulletMatch) {
+      return (
+        <View key={i} style={summaryStyles.bulletRow}>
+          <Text style={summaryStyles.bullet}>•</Text>
+          <Text style={summaryStyles.bulletText}>{bulletMatch[1]}</Text>
+        </View>
+      );
+    }
+
+    // 見出し風（行末に「:」や「：」がある、または短い行）
+    if ((trimmed.endsWith(':') || trimmed.endsWith('：')) && trimmed.length < 30) {
+      return <Text key={i} style={summaryStyles.heading}>{trimmed}</Text>;
+    }
+
+    // 日時情報（日付や時刻を含む行）
+    if (/\d{4}[-/年]\d{1,2}[-/月]\d{1,2}|令和|平成/.test(trimmed)) {
+      return (
+        <View key={i} style={summaryStyles.dateRow}>
+          <Ionicons name="calendar-outline" size={13} color={Colors.primary} />
+          <Text style={summaryStyles.dateText}>{trimmed}</Text>
+        </View>
+      );
+    }
+
+    return <Text key={i} style={summaryStyles.normalText}>{trimmed}</Text>;
+  });
+}
+
+const summaryStyles = StyleSheet.create({
+  bulletRow: { flexDirection: 'row', paddingLeft: 4, marginBottom: 4 },
+  bullet: { fontSize: FontSize.md, color: Colors.primary, marginRight: 8, lineHeight: 22 },
+  bulletText: { fontSize: FontSize.md, color: Colors.text, lineHeight: 22, flex: 1 },
+  heading: { fontSize: FontSize.md, fontWeight: '700', color: Colors.text, marginTop: 8, marginBottom: 4 },
+  dateRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4, paddingLeft: 4 },
+  dateText: { fontSize: FontSize.md, color: Colors.primary, fontWeight: '500', lineHeight: 22 },
+  normalText: { fontSize: FontSize.md, color: Colors.text, lineHeight: 22, marginBottom: 4 },
+});
 
 export default function AnalysisResultScreen() {
   const { docId } = useLocalSearchParams<{ docId: string }>();
@@ -20,6 +72,38 @@ export default function AnalysisResultScreen() {
   const [todos, setTodos] = useState<any[]>([]);
   const [items, setItems] = useState<any[]>([]);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [editModal, setEditModal] = useState<{
+    type: 'todo' | 'item' | 'event';
+    id: number;
+    title: string;
+    dueDate: string;
+    description: string;
+  } | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  const openEditModal = (type: 'todo' | 'item' | 'event', item: any) => {
+    setEditModal({
+      type,
+      id: item.id,
+      title: type === 'item' ? item.name : item.title,
+      dueDate: (type === 'event' ? item.date : item.due_date) || '',
+      description: item.description || '',
+    });
+  };
+
+  const saveEdit = async () => {
+    if (!editModal) return;
+    const { type, id, title, dueDate, description } = editModal;
+    if (type === 'todo') {
+      await updateTodo(id, { title, dueDate: dueDate || null, description });
+    } else if (type === 'item') {
+      await updateItem(id, { name: title, dueDate: dueDate || null, description });
+    } else {
+      await updateEvent(id, { title, date: dueDate || undefined, description });
+    }
+    setEditModal(null);
+    loadData();
+  };
 
   const loadData = useCallback(async () => {
     const db = await getDatabase();
@@ -104,6 +188,9 @@ export default function AnalysisResultScreen() {
             driveFileId,
           });
           await db.runAsync('UPDATE todos SET task_id = ? WHERE id = ?', [taskId, t.id]);
+          if (t.due_date) {
+            registerReminder({ title: t.title, dueDate: t.due_date, targetPerson: t.target_person, type: 'todo', documentTitle: doc.title, driveFileId }).catch(() => {});
+          }
           successCount++;
         } catch (err: any) {
           console.warn('Todo registration failed:', err.message);
@@ -122,6 +209,9 @@ export default function AnalysisResultScreen() {
             isItem: true,
             driveFileId,
           });
+          if (i.due_date) {
+            registerReminder({ title: i.name, dueDate: i.due_date, targetPerson: i.target_person, type: 'item', documentTitle: doc.title, driveFileId }).catch(() => {});
+          }
           successCount++;
         } catch (err: any) {
           console.warn('Item registration failed:', err.message);
@@ -193,6 +283,44 @@ export default function AnalysisResultScreen() {
           <Ionicons name="document-outline" size={14} color={Colors.textSecondary} />
           <Text style={styles.meta}>{doc.file_name}</Text>
         </View>
+
+        {/* 元資料リンク */}
+        <View style={styles.sourceLinks}>
+          {doc.file_path ? (
+            <TouchableOpacity
+              style={styles.sourceLinkButton}
+              onPress={async () => {
+                try {
+                  const file = new File(doc.file_path);
+                  if (file.exists) {
+                    // QuickLookでプレビュー表示
+                    await Linking.openURL(doc.file_path);
+                  } else {
+                    Alert.alert('ファイルなし', 'ローカルのファイルが見つかりません。再スキャンしてください。');
+                  }
+                } catch {
+                  Alert.alert('エラー', 'ファイルを開けませんでした');
+                }
+              }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="document-text-outline" size={16} color={Colors.primary} />
+              <Text style={styles.sourceLinkText}>元資料を開く</Text>
+            </TouchableOpacity>
+          ) : null}
+          {doc.drive_file_id ? (
+            <TouchableOpacity
+              style={styles.sourceLinkButton}
+              onPress={() => {
+                Linking.openURL(`https://drive.google.com/file/d/${doc.drive_file_id}/view`);
+              }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="logo-google" size={16} color={Colors.primary} />
+              <Text style={styles.sourceLinkText}>Driveで開く</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
       </View>
 
       {/* Summary */}
@@ -202,7 +330,7 @@ export default function AnalysisResultScreen() {
           <Text style={styles.sectionTitle}>要約</Text>
         </View>
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryText}>{doc.summary}</Text>
+          {renderSummary(doc.summary)}
         </View>
       </View>
 
@@ -217,7 +345,7 @@ export default function AnalysisResultScreen() {
             <View key={e.id} style={[styles.card, styles.eventCard]}>
               <View style={styles.cardMain}>
                 <Ionicons name="calendar" size={18} color={Colors.primary} />
-                <View style={styles.cardContent}>
+                <TouchableOpacity style={styles.cardContent} onPress={() => openEditModal('event', e)} activeOpacity={0.6}>
                   <View style={styles.cardTitleRow}>
                     <Text style={styles.cardTitle}>{e.title}</Text>
                     {e.calendar_event_id && (
@@ -237,7 +365,7 @@ export default function AnalysisResultScreen() {
                     </View>
                   ) : null}
                   {e.description ? <Text style={styles.cardDesc}>{e.description}</Text> : null}
-                </View>
+                </TouchableOpacity>
               </View>
               <TouchableOpacity
                 onPress={() => handleDeleteEvent(e.id, e.title)}
@@ -272,13 +400,13 @@ export default function AnalysisResultScreen() {
                     color={t.is_completed ? Colors.success : Colors.warning}
                   />
                 </TouchableOpacity>
-                <View style={styles.cardContent}>
+                <TouchableOpacity style={styles.cardContent} onPress={() => openEditModal('todo', t)} activeOpacity={0.6}>
                   <Text style={[styles.cardTitle, t.is_completed && styles.completedText]}>{t.title}</Text>
                   <Text style={styles.cardMeta}>
                     {t.target_person}{t.due_date ? ` / 期限: ${t.due_date}` : ''}
                   </Text>
                   {t.description ? <Text style={styles.cardDesc}>{t.description}</Text> : null}
-                </View>
+                </TouchableOpacity>
               </View>
               <TouchableOpacity
                 onPress={() => handleDeleteTodo(t.id, t.title)}
@@ -313,13 +441,13 @@ export default function AnalysisResultScreen() {
                     color={i.is_completed ? Colors.success : Colors.success}
                   />
                 </TouchableOpacity>
-                <View style={styles.cardContent}>
+                <TouchableOpacity style={styles.cardContent} onPress={() => openEditModal('item', i)} activeOpacity={0.6}>
                   <Text style={[styles.cardTitle, i.is_completed && styles.completedText]}>{i.name}</Text>
                   <Text style={styles.cardMeta}>
                     {i.target_person}{i.due_date ? ` / 期限: ${i.due_date}` : ''}
                   </Text>
                   {i.description ? <Text style={styles.cardDesc}>{i.description}</Text> : null}
-                </View>
+                </TouchableOpacity>
               </View>
               <TouchableOpacity
                 onPress={() => handleDeleteItem(i.id, i.name)}
@@ -374,6 +502,82 @@ export default function AnalysisResultScreen() {
       )}
 
       <View style={{ height: 40 }} />
+
+      {/* Edit Modal */}
+      <Modal visible={!!editModal} animationType="slide" transparent>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {editModal?.type === 'todo' ? 'TODO編集' : editModal?.type === 'item' ? '持ち物編集' : 'イベント編集'}
+              </Text>
+              <TouchableOpacity onPress={() => setEditModal(null)} hitSlop={8}>
+                <Ionicons name="close" size={24} color={Colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalLabel}>
+              {editModal?.type === 'item' ? '名前' : 'タイトル'}
+            </Text>
+            <TextInput
+              style={styles.modalInput}
+              value={editModal?.title || ''}
+              onChangeText={(v) => setEditModal(prev => prev ? { ...prev, title: v } : null)}
+              placeholder="タイトル"
+              placeholderTextColor={Colors.textSecondary}
+            />
+
+            <Text style={styles.modalLabel}>
+              {editModal?.type === 'event' ? '日付' : '期限'}
+            </Text>
+            <TouchableOpacity
+              style={styles.modalInput}
+              onPress={() => setShowDatePicker(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={{ fontSize: FontSize.md, color: editModal?.dueDate ? Colors.text : Colors.textSecondary }}>
+                {editModal?.dueDate || '日付を選択'}
+              </Text>
+            </TouchableOpacity>
+            {showDatePicker && (
+              <DateTimePicker
+                value={editModal?.dueDate ? new Date(editModal.dueDate + 'T00:00:00') : new Date()}
+                mode="date"
+                display="inline"
+                locale="ja-JP"
+                onChange={(_, selectedDate) => {
+                  setShowDatePicker(false);
+                  if (selectedDate) {
+                    const y = selectedDate.getFullYear();
+                    const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                    const d = String(selectedDate.getDate()).padStart(2, '0');
+                    setEditModal(prev => prev ? { ...prev, dueDate: `${y}-${m}-${d}` } : null);
+                  }
+                }}
+              />
+            )}
+
+            <Text style={styles.modalLabel}>説明</Text>
+            <TextInput
+              style={[styles.modalInput, styles.modalTextArea]}
+              value={editModal?.description || ''}
+              onChangeText={(v) => setEditModal(prev => prev ? { ...prev, description: v } : null)}
+              placeholder="説明"
+              placeholderTextColor={Colors.textSecondary}
+              multiline
+              numberOfLines={3}
+            />
+
+            <TouchableOpacity style={styles.modalSaveButton} onPress={saveEdit} activeOpacity={0.7}>
+              <Ionicons name="checkmark" size={20} color="#fff" />
+              <Text style={styles.modalSaveText}>保存</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </ScrollView>
   );
 }
@@ -440,4 +644,40 @@ const styles = StyleSheet.create({
   },
   registerButtonDisabled: { backgroundColor: Colors.textSecondary },
   registerButtonText: { color: '#fff', fontSize: FontSize.md, fontWeight: '600' },
+  sourceLinks: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.md },
+  sourceLinkButton: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.xs,
+    paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.sm, borderWidth: 1, borderColor: Colors.primary,
+    backgroundColor: Colors.primaryLight,
+  },
+  sourceLinkText: { fontSize: FontSize.sm, color: Colors.primary, fontWeight: '500' },
+  modalOverlay: {
+    flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  modalContent: {
+    backgroundColor: Colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    padding: Spacing.lg, paddingBottom: 40,
+  },
+  modalHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    marginBottom: Spacing.lg,
+  },
+  modalTitle: { fontSize: FontSize.lg, fontWeight: 'bold', color: Colors.text },
+  modalLabel: {
+    fontSize: FontSize.sm, fontWeight: '500', color: Colors.textSecondary,
+    marginTop: Spacing.sm, marginBottom: Spacing.xs,
+  },
+  modalInput: {
+    borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.sm,
+    padding: Spacing.sm, fontSize: FontSize.md, color: Colors.text,
+    backgroundColor: Colors.background,
+  },
+  modalTextArea: { minHeight: 80, textAlignVertical: 'top' },
+  modalSaveButton: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.primary, borderRadius: BorderRadius.sm, padding: Spacing.md,
+    marginTop: Spacing.lg, gap: Spacing.sm,
+  },
+  modalSaveText: { color: '#fff', fontSize: FontSize.md, fontWeight: '600' },
 });

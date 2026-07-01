@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Image } from 'react-native';
 import { useFocusEffect, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, Shadows, BorderRadius } from '../../src/constants/theme';
@@ -12,6 +12,9 @@ interface PendingItem {
   targetPerson: string;
   dueDate: string | null;
   type: 'todo' | 'item';
+  documentId: number;
+  isCompleted: boolean;
+  description: string;
 }
 
 interface DashboardData {
@@ -53,10 +56,12 @@ export default function HomeScreen() {
 
       const allPending: PendingItem[] = [
         ...pendingTodos.map((r: any) => ({
-          id: r.id, title: r.title, targetPerson: r.target_person, dueDate: r.due_date, type: 'todo' as const,
+          id: r.id, title: r.title, targetPerson: r.target_person, dueDate: r.due_date,
+          type: 'todo' as const, documentId: r.document_id, isCompleted: !!r.is_completed, description: r.description || '',
         })),
         ...pendingItemsRaw.map((r: any) => ({
-          id: r.id, title: `[持ち物] ${r.name}`, targetPerson: r.target_person, dueDate: r.due_date, type: 'item' as const,
+          id: r.id, title: `[持ち物] ${r.name}`, targetPerson: r.target_person, dueDate: r.due_date,
+          type: 'item' as const, documentId: r.document_id, isCompleted: !!r.is_completed, description: r.description || '',
         })),
       ].sort((a, b) => {
         if (!a.dueDate) return 1;
@@ -103,7 +108,13 @@ export default function HomeScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
     >
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>ぷりかん！</Text>
+        <View style={styles.headerRow}>
+          <Image source={require('../../assets/icon.png')} style={styles.headerIcon} />
+          <View>
+            <Text style={styles.headerTitle}>ぷりかん！</Text>
+            <Text style={styles.headerTagline}>プリント管理をかんたんに</Text>
+          </View>
+        </View>
         <Text style={styles.headerSubtitle}>処理済み: {data.totalDocs}件</Text>
       </View>
 
@@ -131,33 +142,57 @@ export default function HomeScreen() {
             <Text style={styles.emptyText}>未完了のTODO・持ち物はありません</Text>
           </View>
         ) : (
-          data.pendingItems.map((item) => (
-            <TouchableOpacity
-              key={`${item.type}-${item.id}`}
-              style={[styles.card, item.type === 'item' ? styles.itemCard : styles.todoCard]}
-              onPress={async () => {
-                if (item.type === 'todo') await toggleTodoCompleted(item.id);
-                else await toggleItemCompleted(item.id);
-                loadData();
-              }}
-              activeOpacity={0.6}
-              accessibilityLabel={`${item.title}を完了にする`}
-              accessibilityRole="button"
-            >
-              <Ionicons
-                name={item.type === 'item' ? 'bag-handle-outline' : 'square-outline'}
-                size={22}
-                color={item.type === 'item' ? Colors.success : Colors.warning}
-              />
-              <View style={styles.cardContent}>
-                <Text style={styles.cardTitle}>{item.title}</Text>
-                <Text style={styles.cardMeta}>
-                  {item.targetPerson}{item.dueDate ? ` - 期限: ${item.dueDate}` : ''}
-                </Text>
+          (() => {
+            // 日付ごとにグループ化
+            const groups = new Map<string, PendingItem[]>();
+            data.pendingItems.forEach((item) => {
+              const key = item.dueDate || '期限なし';
+              if (!groups.has(key)) groups.set(key, []);
+              groups.get(key)!.push(item);
+            });
+            return Array.from(groups.entries()).map(([date, items]) => (
+              <View key={date}>
+                <View style={styles.dateGroup}>
+                  <Ionicons name="time-outline" size={14} color={Colors.textSecondary} />
+                  <Text style={styles.dateGroupText}>
+                    {date === '期限なし' ? '期限なし' : date}
+                  </Text>
+                </View>
+                {items.map((item) => (
+                  <TouchableOpacity
+                    key={`${item.type}-${item.id}`}
+                    style={[styles.card, item.type === 'item' ? styles.itemCard : styles.todoCard]}
+                    onPress={() => router.push({ pathname: '/analysis-result', params: { docId: String(item.documentId) } })}
+                    activeOpacity={0.6}
+                    accessibilityLabel={`${item.title}の詳細を表示`}
+                  >
+                    <TouchableOpacity
+                      onPress={async (e) => {
+                        e.stopPropagation?.();
+                        if (item.type === 'todo') await toggleTodoCompleted(item.id);
+                        else await toggleItemCompleted(item.id);
+                        loadData();
+                      }}
+                      hitSlop={8}
+                    >
+                      <Ionicons
+                        name={item.type === 'item' ? 'bag-handle-outline' : 'square-outline'}
+                        size={22}
+                        color={item.type === 'item' ? Colors.success : Colors.warning}
+                      />
+                    </TouchableOpacity>
+                    <View style={styles.cardContent}>
+                      <Text style={styles.cardTitle}>{item.title}</Text>
+                      <Text style={styles.cardMeta}>
+                        {item.targetPerson}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={Colors.border} />
+                  </TouchableOpacity>
+                ))}
               </View>
-              <Ionicons name="chevron-forward" size={16} color={Colors.border} />
-            </TouchableOpacity>
-          ))
+            ));
+          })()
         )}
       </View>
 
@@ -240,8 +275,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background },
   header: { padding: Spacing.lg, paddingTop: Spacing.xl, backgroundColor: Colors.primary },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+  headerIcon: { width: 56, height: 56, borderRadius: 14, backgroundColor: '#fff' },
   headerTitle: { fontSize: FontSize.xxl, fontWeight: 'bold', color: '#fff' },
-  headerSubtitle: { fontSize: FontSize.sm, color: 'rgba(255,255,255,0.8)', marginTop: Spacing.xs },
+  headerTagline: { fontSize: FontSize.sm, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
+  headerSubtitle: { fontSize: FontSize.sm, color: 'rgba(255,255,255,0.7)', marginTop: Spacing.sm },
   scanButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     backgroundColor: Colors.secondary, margin: Spacing.md, padding: Spacing.md,
@@ -278,4 +316,9 @@ const styles = StyleSheet.create({
   },
   badgeAction: { backgroundColor: Colors.actionRequired, color: '#8B0000' },
   badgeNotice: { backgroundColor: Colors.notice, color: '#003366' },
+  dateGroup: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.xs,
+    marginTop: Spacing.sm, marginBottom: Spacing.xs, paddingLeft: Spacing.xs,
+  },
+  dateGroupText: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.textSecondary },
 });

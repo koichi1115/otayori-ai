@@ -1,12 +1,10 @@
-import { getSetting } from '../db/settings';
+import { getValidAccessToken } from './google-auth';
 
 const DRIVE_API = 'https://www.googleapis.com/drive/v3';
 const UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
 
 async function getAccessToken(): Promise<string> {
-  const token = await getSetting('googleAccessToken');
-  if (!token) throw new Error('Googleアカウントと連携してください。設定画面から認証できます。');
-  return token;
+  return getValidAccessToken();
 }
 
 export interface DriveFile {
@@ -24,7 +22,7 @@ export async function listFilesInFolder(folderId: string): Promise<DriveFile[]> 
   const token = await getAccessToken();
   const query = `'${folderId}' in parents and trashed = false and (mimeType = 'application/pdf' or mimeType contains 'image/')`;
   const response = await fetch(
-    `${DRIVE_API}/files?q=${encodeURIComponent(query)}&fields=files(id,name,mimeType,createdTime,webViewLink)&orderBy=createdTime desc&pageSize=50`,
+    `${DRIVE_API}/files?q=${encodeURIComponent(query)}&fields=files(id,name,mimeType,createdTime,webViewLink)&orderBy=createdTime%20desc&pageSize=50`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
 
@@ -144,6 +142,36 @@ export async function renameFile(fileId: string, newName: string): Promise<void>
   if (!response.ok) {
     throw new Error('ファイル名の変更に失敗しました');
   }
+}
+
+/**
+ * Get or create the app's Drive folder.
+ */
+export async function getOrCreateAppFolder(): Promise<string> {
+  const { getSetting, setSetting } = await import('../db/settings');
+  const existing = await getSetting('driveFolderId');
+  if (existing) return existing;
+
+  const token = await getAccessToken();
+  const response = await fetch(`${DRIVE_API}/files`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      name: 'ぷりかん',
+      mimeType: 'application/vnd.google-apps.folder',
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`フォルダの作成に失敗しました (${response.status})`);
+  }
+
+  const folder = await response.json();
+  await setSetting('driveFolderId', folder.id);
+  return folder.id;
 }
 
 /**

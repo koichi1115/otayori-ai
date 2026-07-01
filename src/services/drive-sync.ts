@@ -1,6 +1,6 @@
 import { getDatabase } from '../db/database';
-import { getSetting } from '../db/settings';
-import { listFilesInFolder, downloadFileAsBase64 } from './google-drive';
+import { listFilesInFolder, downloadFileAsBase64, getOrCreateAppFolder } from './google-drive';
+import { registerReminder } from './reminder';
 import { analyzePDF } from './llm';
 import { sendLineNotification } from './line-notify';
 import { createCalendarEvent } from './google-calendar';
@@ -18,10 +18,7 @@ export interface SyncResult {
  * Detects new files, analyzes them, saves results, and optionally registers to Calendar/Tasks.
  */
 export async function syncDriveFolder(autoRegister: boolean = false): Promise<SyncResult> {
-  const folderId = await getSetting('driveFolderId');
-  if (!folderId) {
-    throw new Error('Google DriveのフォルダIDが設定されていません。設定画面から入力してください。');
-  }
+  const folderId = await getOrCreateAppFolder();
 
   const db = await getDatabase();
   const result: SyncResult = { processed: 0, skipped: 0, errors: 0, details: [] };
@@ -108,6 +105,9 @@ export async function syncDriveFolder(autoRegister: boolean = false): Promise<Sy
               driveFileId: file.id,
             });
             await db.runAsync('UPDATE todos SET task_id = ? WHERE id = ?', [taskId, todoResult.lastInsertRowId]);
+            if (todo.dueDate) {
+              registerReminder({ title: todo.title, dueDate: todo.dueDate, targetPerson: todo.targetPerson, type: 'todo', documentTitle: analysis.title, driveFileId: file.id }).catch(() => {});
+            }
           } catch { /* Task registration is best-effort */ }
         }
       }
@@ -129,6 +129,9 @@ export async function syncDriveFolder(autoRegister: boolean = false): Promise<Sy
               isItem: true,
               driveFileId: file.id,
             });
+            if (item.dueDate) {
+              registerReminder({ title: item.name, dueDate: item.dueDate, targetPerson: item.targetPerson, type: 'item' }).catch(() => {});
+            }
           } catch { /* Task registration is best-effort */ }
         }
       }

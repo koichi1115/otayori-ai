@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, ScrollView } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
-import { router } from 'expo-router';
+import { File } from 'expo-file-system';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, Shadows, BorderRadius } from '../../src/constants/theme';
 import { analyzePDF } from '../../src/services/llm';
@@ -10,7 +10,7 @@ import { sendLineNotification } from '../../src/services/line-notify';
 import { getDatabase } from '../../src/db/database';
 import { syncDriveFolder } from '../../src/services/drive-sync';
 import { isGoogleConnected } from '../../src/services/google-auth';
-import { getSetting } from '../../src/db/settings';
+import { uploadFile, getOrCreateAppFolder } from '../../src/services/google-drive';
 
 function getMimeType(fileName: string): string {
   const ext = fileName.toLowerCase().split('.').pop();
@@ -27,6 +27,14 @@ function getMimeType(fileName: string): string {
 export default function ScanScreen() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [statusText, setStatusText] = useState('');
+  const params = useLocalSearchParams<{ capturedUri?: string; capturedName?: string }>();
+
+  useEffect(() => {
+    if (params.capturedUri && params.capturedName) {
+      processFile(params.capturedUri, params.capturedName);
+      router.setParams({ capturedUri: undefined, capturedName: undefined });
+    }
+  }, [params.capturedUri]);
 
   const pickDocument = async () => {
     try {
@@ -49,23 +57,41 @@ export default function ScanScreen() {
     setStatusText('ファイルを読み込み中...');
 
     try {
-      const base64 = await FileSystem.readAsStringAsync(uri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
+      const file = new File(uri);
+      const arrayBuffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const base64 = btoa(binary);
 
       const mimeType = getMimeType(fileName);
       setStatusText('AI解析中...');
       const analysisResult = await analyzePDF(base64, mimeType);
 
+      // Google Drive にアップロード（連携済みの場合）
+      let driveFileId: string | null = null;
+      try {
+        const connected = await isGoogleConnected();
+        if (connected) {
+          setStatusText('Google Driveにアップロード中...');
+          const folderId = await getOrCreateAppFolder();
+          const driveFile = await uploadFile(folderId, analysisResult.suggestedFileName || fileName, base64, mimeType);
+          driveFileId = driveFile.id;
+        }
+      } catch { /* Drive upload is best-effort */ }
+
       setStatusText('保存中...');
       const db = await getDatabase();
       const docResult = await db.runAsync(
-        `INSERT INTO documents (file_name, original_file_name, file_path, status, category, source, title, summary, raw_json)
-         VALUES (?, ?, ?, 'completed', ?, ?, ?, ?, ?)`,
+        `INSERT INTO documents (file_name, original_file_name, file_path, drive_file_id, status, category, source, title, summary, raw_json)
+         VALUES (?, ?, ?, ?, 'completed', ?, ?, ?, ?, ?)`,
         [
           analysisResult.suggestedFileName || fileName,
           fileName,
           uri,
+          driveFileId,
           analysisResult.category,
           analysisResult.source,
           analysisResult.title,
@@ -152,7 +178,7 @@ export default function ScanScreen() {
 
       <TouchableOpacity
         style={styles.option}
-        onPress={() => Alert.alert('準備中', 'カメラスキャン機能は次のアップデートで実装予定です')}
+        onPress={() => router.push('/camera-scan')}
         activeOpacity={0.7}
         accessibilityLabel="カメラでスキャン"
         accessibilityRole="button"
@@ -173,11 +199,6 @@ export default function ScanScreen() {
           const connected = await isGoogleConnected();
           if (!connected) {
             Alert.alert('未連携', '設定画面からGoogleアカウントを連携してください');
-            return;
-          }
-          const folderId = await getSetting('driveFolderId');
-          if (!folderId) {
-            Alert.alert('未設定', '設定画面でGoogle DriveのフォルダIDを入力してください');
             return;
           }
           setIsProcessing(true);

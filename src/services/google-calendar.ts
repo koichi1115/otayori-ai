@@ -1,12 +1,10 @@
-import { getSetting } from '../db/settings';
+import { getValidAccessToken } from './google-auth';
 import { getDriveFileUrl } from './google-drive';
 
 const CALENDAR_API = 'https://www.googleapis.com/calendar/v3';
 
 async function getAccessToken(): Promise<string> {
-  const token = await getSetting('googleAccessToken');
-  if (!token) throw new Error('Googleアカウントと連携してください。');
-  return token;
+  return getValidAccessToken();
 }
 
 async function getCalendarId(): Promise<string> {

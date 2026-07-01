@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "ぷりかん！",
-    "slug": "otayori-ai",
+    "slug": "xangi-dev",
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -9,7 +9,11 @@
     "scheme": "otayori-ai",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.otayori.ai"
+      "bundleIdentifier": "com.otayori.ai",
+      "buildNumber": "44",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -22,7 +26,12 @@
     },
     "extra": {
       "claudeApiKey": "${CLAUDE_API_KEY}",
-      "claudeModel": "claude-haiku-4-5-20251001"
+      "claudeModel": "claude-haiku-4-5-20251001",
+      "googleOAuthClientId": "539790701575-bhu998if0q5shkbg64c06ukbt4c9m0pk.apps.googleusercontent.com",
+      "router": {},
+      "eas": {
+        "projectId": "fdf46e5c-3570-41f0-98f0-2574854ccdf1"
+      }
     },
     "plugins": [
       "expo-router",
@@ -39,7 +48,9 @@
         {
           "iCloudContainerEnvironment": "Production"
         }
-      ]
-    ]
+      ],
+      "expo-font"
+    ],
+    "owner": "saiko1115"
   }
 }

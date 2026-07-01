@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, Platform } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Colors, Spacing, FontSize, Shadows, BorderRadius } from '../src/constants/theme';
 import { getChild, createChild, updateChild } from '../src/db/children';
 import { getFacilities } from '../src/db/facilities';
@@ -14,6 +15,8 @@ export default function ChildFormScreen() {
   const [name, setName] = useState('');
   const [gender, setGender] = useState<'male' | 'female'>('male');
   const [birthdate, setBirthdate] = useState('');
+  const [birthdateDate, setBirthdateDate] = useState(new Date(2020, 3, 1));
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [className, setClassName] = useState('');
   const [facilityId, setFacilityId] = useState<number | null>(null);
   const [facilities, setFacilities] = useState<Facility[]>([]);
@@ -27,6 +30,10 @@ export default function ChildFormScreen() {
           setName(child.name);
           setGender(child.gender);
           setBirthdate(child.birthdate);
+          if (child.birthdate) {
+            const parts = child.birthdate.split('-');
+            setBirthdateDate(new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])));
+          }
           setClassName(child.className);
           setFacilityId(child.facilityId);
         }
@@ -83,16 +90,47 @@ export default function ChildFormScreen() {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.label}>生年月日 * (YYYY-MM-DD)</Text>
-        <TextInput
-          style={styles.input}
-          value={birthdate}
-          onChangeText={setBirthdate}
-          placeholder="2020-04-01"
-          placeholderTextColor={Colors.textSecondary}
-          keyboardType="numbers-and-punctuation"
-          accessibilityLabel="生年月日"
-        />
+        <Text style={styles.label}>生年月日 *</Text>
+        <TouchableOpacity
+          style={styles.dateButton}
+          onPress={() => setShowDatePicker(true)}
+          activeOpacity={0.7}
+          accessibilityLabel="生年月日を選択"
+        >
+          <Ionicons name="calendar-outline" size={18} color={Colors.textSecondary} />
+          <Text style={[styles.dateButtonText, !birthdate && { color: Colors.textSecondary }]}>
+            {birthdate || '生年月日を選択'}
+          </Text>
+        </TouchableOpacity>
+        {showDatePicker && (
+          <DateTimePicker
+            value={birthdateDate}
+            mode="date"
+            display="spinner"
+            locale="ja"
+            maximumDate={new Date()}
+            minimumDate={new Date(2000, 0, 1)}
+            onChange={(_, selectedDate) => {
+              if (Platform.OS === 'android') setShowDatePicker(false);
+              if (selectedDate) {
+                setBirthdateDate(selectedDate);
+                const y = selectedDate.getFullYear();
+                const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                const d = String(selectedDate.getDate()).padStart(2, '0');
+                setBirthdate(`${y}-${m}-${d}`);
+              }
+            }}
+          />
+        )}
+        {showDatePicker && Platform.OS === 'ios' && (
+          <TouchableOpacity
+            style={styles.dateConfirmButton}
+            onPress={() => setShowDatePicker(false)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.dateConfirmText}>決定</Text>
+          </TouchableOpacity>
+        )}
 
         <Text style={styles.label}>クラス名</Text>
         <TextInput
@@ -193,4 +231,15 @@ const styles = StyleSheet.create({
     ...Shadows.md,
   },
   saveButtonText: { color: '#fff', fontSize: FontSize.lg, fontWeight: '600' },
+  dateButton: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
+    borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.sm, padding: Spacing.sm,
+    backgroundColor: Colors.background,
+  },
+  dateButtonText: { fontSize: FontSize.md, color: Colors.text },
+  dateConfirmButton: {
+    alignSelf: 'flex-end', paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs,
+    marginTop: Spacing.xs,
+  },
+  dateConfirmText: { fontSize: FontSize.md, color: Colors.primary, fontWeight: '600' },
 });

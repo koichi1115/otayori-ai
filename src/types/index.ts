@@ -131,4 +131,5 @@ export interface AppSettings {
   calendarId: string | null;
   lineChannelAccessToken: string | null;
   lineUserId: string | null;
+  reminderDaysBefore: string | null; // "1" ~ "7"
 }

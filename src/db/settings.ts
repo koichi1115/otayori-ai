@@ -14,6 +14,7 @@ const DEFAULTS: AppSettings = {
   calendarId: null,
   lineChannelAccessToken: null,
   lineUserId: null,
+  reminderDaysBefore: '1',
 };
 
 export async function getSetting(key: keyof AppSettings): Promise<string | null> {
