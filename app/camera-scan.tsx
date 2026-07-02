@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Linking } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,19 +11,33 @@ export default function CameraScanScreen() {
   const [isTaking, setIsTaking] = useState(false);
   const [flash, setFlash] = useState<'off' | 'on'>('off');
   const [cameraReady, setCameraReady] = useState(false);
+  const requestedRef = useRef(false);
 
-  if (!permission) {
+  // Trigger the OS permission dialog directly on first mount — no custom
+  // pre-permission prompt with an "Allow"-worded button or an exit button
+  // (App Store Guideline 5.1.1(iv)).
+  useEffect(() => {
+    if (permission && !permission.granted && permission.canAskAgain && !requestedRef.current) {
+      requestedRef.current = true;
+      requestPermission();
+    }
+  }, [permission, requestPermission]);
+
+  // Still resolving status, or the OS dialog is being shown — render nothing.
+  if (!permission || (!permission.granted && permission.canAskAgain)) {
     return <View style={styles.container} />;
   }
 
+  // Permission was permanently denied: this screen appears AFTER the user's
+  // decision, so it may offer a Settings link and a way back.
   if (!permission.granted) {
     return (
       <SafeAreaView style={styles.permissionContainer}>
         <Ionicons name="camera-outline" size={64} color={Colors.textSecondary} />
-        <Text style={styles.permissionTitle}>カメラの許可が必要です</Text>
-        <Text style={styles.permissionDesc}>プリントを撮影するためにカメラへのアクセスを許可してください</Text>
-        <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
-          <Text style={styles.permissionButtonText}>カメラを許可する</Text>
+        <Text style={styles.permissionTitle}>カメラを利用できません</Text>
+        <Text style={styles.permissionDesc}>プリントを撮影するには、設定アプリでカメラへのアクセスを許可してください</Text>
+        <TouchableOpacity style={styles.permissionButton} onPress={() => Linking.openSettings()}>
+          <Text style={styles.permissionButtonText}>設定を開く</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.cancelButton} onPress={() => router.back()}>
           <Text style={styles.cancelButtonText}>戻る</Text>

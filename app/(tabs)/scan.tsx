@@ -8,9 +8,7 @@ import { Colors, Spacing, FontSize, Shadows, BorderRadius } from '../../src/cons
 import { analyzePDF } from '../../src/services/llm';
 import { sendLineNotification } from '../../src/services/line-notify';
 import { getDatabase } from '../../src/db/database';
-import { syncDriveFolder } from '../../src/services/drive-sync';
-import { isGoogleConnected } from '../../src/services/google-auth';
-import { uploadFile, getOrCreateAppFolder } from '../../src/services/google-drive';
+import { registerReminder } from '../../src/services/reminder';
 
 function getMimeType(fileName: string): string {
   const ext = fileName.toLowerCase().split('.').pop();
@@ -70,18 +68,6 @@ export default function ScanScreen() {
       setStatusText('AI解析中...');
       const analysisResult = await analyzePDF(base64, mimeType);
 
-      // Google Drive にアップロード（連携済みの場合）
-      let driveFileId: string | null = null;
-      try {
-        const connected = await isGoogleConnected();
-        if (connected) {
-          setStatusText('Google Driveにアップロード中...');
-          const folderId = await getOrCreateAppFolder();
-          const driveFile = await uploadFile(folderId, analysisResult.suggestedFileName || fileName, base64, mimeType);
-          driveFileId = driveFile.id;
-        }
-      } catch { /* Drive upload is best-effort */ }
-
       setStatusText('保存中...');
       const db = await getDatabase();
       const docResult = await db.runAsync(
@@ -91,7 +77,7 @@ export default function ScanScreen() {
           analysisResult.suggestedFileName || fileName,
           fileName,
           uri,
-          driveFileId,
+          null,
           analysisResult.category,
           analysisResult.source,
           analysisResult.title,
@@ -121,6 +107,18 @@ export default function ScanScreen() {
           'INSERT INTO items (document_id, name, due_date, target_person, description) VALUES (?, ?, ?, ?, ?)',
           [docId, item.name, item.dueDate || null, item.targetPerson, item.description]
         );
+      }
+
+      // Schedule LINE reminders for due-dated TODOs / items (best-effort)
+      for (const todo of analysisResult.todos) {
+        if (todo.dueDate) {
+          registerReminder({ title: todo.title, dueDate: todo.dueDate, targetPerson: todo.targetPerson, type: 'todo', documentTitle: analysisResult.title }).catch(() => {});
+        }
+      }
+      for (const item of analysisResult.items) {
+        if (item.dueDate) {
+          registerReminder({ title: item.name, dueDate: item.dueDate, targetPerson: item.targetPerson, type: 'item', documentTitle: analysisResult.title }).catch(() => {});
+        }
       }
 
       // Send LINE notification (non-blocking)
@@ -190,45 +188,6 @@ export default function ScanScreen() {
         <Text style={styles.optionDesc}>プリントを撮影してPDF化</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.option}
-        activeOpacity={0.7}
-        accessibilityLabel="Google Driveから同期"
-        accessibilityRole="button"
-        onPress={async () => {
-          const connected = await isGoogleConnected();
-          if (!connected) {
-            Alert.alert('未連携', '設定画面からGoogleアカウントを連携してください');
-            return;
-          }
-          setIsProcessing(true);
-          setStatusText('Google Driveフォルダを同期中...');
-          try {
-            const result = await syncDriveFolder(true);
-            setIsProcessing(false);
-            setStatusText('');
-            if (result.processed === 0 && result.errors === 0) {
-              Alert.alert('同期完了', '新しいファイルはありませんでした');
-            } else {
-              Alert.alert(
-                '同期完了',
-                `処理: ${result.processed}件\nスキップ: ${result.skipped}件\nエラー: ${result.errors}件` +
-                (result.details.length > 0 ? '\n\n' + result.details.join('\n') : '')
-              );
-            }
-          } catch (e: any) {
-            setIsProcessing(false);
-            setStatusText('');
-            Alert.alert('同期エラー', e.message);
-          }
-        }}
-      >
-        <View style={[styles.iconCircle, { backgroundColor: '#E8F5E9' }]}>
-          <Ionicons name="cloud-download" size={32} color={Colors.success} />
-        </View>
-        <Text style={styles.optionTitle}>Google Driveから同期</Text>
-        <Text style={styles.optionDesc}>指定フォルダの新しいファイルを一括解析</Text>
-      </TouchableOpacity>
     </ScrollView>
   );
 }

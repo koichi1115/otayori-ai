@@ -2,10 +2,8 @@ import { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, ActivityIndicator, Linking } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
 import { Colors, Spacing, FontSize, Shadows, BorderRadius } from '../../src/constants/theme';
 import { getAllSettings, setSetting } from '../../src/db/settings';
-import { signInWithGoogle, isGoogleConnected, disconnectGoogle } from '../../src/services/google-auth';
 import type { AppSettings } from '../../src/types';
 
 // LINE公式アカウントの友だち追加URL（後で実際のURLに置き換え）
@@ -13,14 +11,11 @@ const LINE_FRIEND_ADD_URL = 'https://line.me/R/ti/p/@760llvzb';
 
 export default function SettingsScreen() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
-  const [googleConnected, setGoogleConnected] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [signingIn, setSigningIn] = useState(false);
 
   const loadSettings = useCallback(async () => {
     try {
       setSettings(await getAllSettings());
-      setGoogleConnected(await isGoogleConnected());
     } catch { /* */ } finally {
       setLoading(false);
     }
@@ -31,34 +26,6 @@ export default function SettingsScreen() {
   const updateSetting = async (key: keyof AppSettings, value: string) => {
     await setSetting(key, value);
     setSettings(prev => prev ? { ...prev, [key]: value } : prev);
-  };
-
-  const handleGoogleSignIn = async () => {
-    const clientId = Constants.expoConfig?.extra?.googleOAuthClientId;
-    if (!clientId) {
-      Alert.alert('設定エラー', 'Google OAuth Client IDが設定されていません');
-      return;
-    }
-    setSigningIn(true);
-    try {
-      await signInWithGoogle(clientId);
-      setGoogleConnected(true);
-      Alert.alert('連携完了', 'Googleアカウントとの連携が完了しました');
-    } catch (e: any) {
-      Alert.alert('認証エラー', e.message);
-    } finally {
-      setSigningIn(false);
-    }
-  };
-
-  const handleGoogleDisconnect = () => {
-    Alert.alert('連携解除', 'Google連携を解除しますか？\nDrive・カレンダーへのアクセスが無効になります。', [
-      { text: 'キャンセル', style: 'cancel' },
-      {
-        text: '解除', style: 'destructive',
-        onPress: async () => { await disconnectGoogle(); setGoogleConnected(false); },
-      },
-    ]);
   };
 
   const lineRoomId = settings?.lineUserId || '';
@@ -74,53 +41,6 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={styles.container}>
-      {/* Google */}
-      <View style={styles.sectionHeader}>
-        <Ionicons name="logo-google" size={20} color={Colors.text} />
-        <Text style={styles.sectionTitle}>Google連携</Text>
-      </View>
-      <View style={styles.card}>
-        {googleConnected ? (
-          <>
-            <View style={styles.connectedRow}>
-              <View style={styles.statusDot} />
-              <Text style={styles.connectedText}>Googleアカウント連携済み</Text>
-            </View>
-            <Text style={styles.hint}>Drive, カレンダーへのアクセスが有効です</Text>
-
-            <TouchableOpacity
-              style={styles.dangerButton}
-              onPress={handleGoogleDisconnect}
-              activeOpacity={0.7}
-              accessibilityLabel="Google連携を解除"
-              accessibilityRole="button"
-            >
-              <Ionicons name="unlink-outline" size={16} color={Colors.danger} />
-              <Text style={styles.dangerButtonText}>連携を解除</Text>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <>
-            <Text style={styles.descText}>Googleアカウントと連携すると、プリントのDrive保存やカレンダー登録ができます。</Text>
-            <TouchableOpacity
-              style={[styles.button, signingIn && { opacity: 0.6 }]}
-              onPress={handleGoogleSignIn}
-              activeOpacity={0.7}
-              disabled={signingIn}
-              accessibilityLabel="Googleアカウントと連携"
-              accessibilityRole="button"
-            >
-              {signingIn ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Ionicons name="logo-google" size={18} color="#fff" />
-              )}
-              <Text style={styles.buttonText}>{signingIn ? '認証中...' : 'Googleアカウントと連携'}</Text>
-            </TouchableOpacity>
-          </>
-        )}
-      </View>
-
       {/* LINE */}
       <View style={styles.sectionHeader}>
         <Ionicons name="chatbubble-outline" size={20} color={Colors.text} />
