@@ -11,8 +11,11 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.otayori.ai",
       "buildNumber": "44",
+      "usesAppleSignIn": true,
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCalendarsWriteOnlyAccessUsageDescription": "抽出した予定をカレンダーに追加するために使用します",
+        "NSRemindersFullAccessUsageDescription": "TODO・持ち物をリマインダーに登録するために使用します"
       }
     },
     "android": {
@@ -47,6 +50,23 @@
         "expo-document-picker",
         {
           "iCloudContainerEnvironment": "Production"
+        }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "抽出した予定をカレンダーに追加するために使用します",
+          "remindersPermission": "TODO・持ち物をリマインダーに登録するために使用します"
+        }
+      ],
+      "expo-apple-authentication",
+      [
+        "expo-share-intent",
+        {
+          "iosActivationRules": {
+            "NSExtensionActivationSupportsFileWithMaxCount": 1,
+            "NSExtensionActivationSupportsImageWithMaxCount": 1
+          }
         }
       ],
       "expo-font"

@@ -74,6 +74,7 @@ export interface ExtractedItem {
   targetPerson: string;
   description: string;
   isCompleted: boolean;
+  reminderId: string | null;
   createdAt: string;
 }
 
@@ -118,6 +119,14 @@ export interface AnalysisResult {
 
 // --- Settings ---
 
+/**
+ * アカウントモード（v1.1）
+ * - local:  ログインなし。iOSカレンダー/リマインダー登録＋端末保存
+ * - apple:  Sign in with Apple。登録先はlocalと同じ。保存は将来iCloud対応
+ * - google: Google連携（v1.2で追加予定）
+ */
+export type AccountMode = 'local' | 'apple' | 'google';
+
 export interface AppSettings {
   llmProvider: LLMProvider;
   claudeApiKey: string;
@@ -132,4 +141,8 @@ export interface AppSettings {
   lineChannelAccessToken: string | null;
   lineUserId: string | null;
   reminderDaysBefore: string | null; // "1" ~ "7"
+  accountMode: AccountMode;
+  appleUserId: string | null; // Sign in with Apple の user 識別子
+  appleUserEmail: string | null; // 初回サインイン時のみ取得できる
+  onboardingDone: string | null; // "1" で完了
 }

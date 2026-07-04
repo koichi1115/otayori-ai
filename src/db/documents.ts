@@ -1,5 +1,22 @@
 import { getDatabase } from './database';
 
+// --- iOS/Google 登録IDの保存（登録済み判定に使用） ---
+
+export async function setEventCalendarId(id: number, calendarEventId: string): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync('UPDATE events SET calendar_event_id = ? WHERE id = ?', [calendarEventId, id]);
+}
+
+export async function setTodoTaskId(id: number, taskId: string): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync('UPDATE todos SET task_id = ? WHERE id = ?', [taskId, id]);
+}
+
+export async function setItemReminderId(id: number, reminderId: string): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync('UPDATE items SET reminder_id = ? WHERE id = ?', [reminderId, id]);
+}
+
 export async function toggleTodoCompleted(id: number): Promise<boolean> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<{ is_completed: number }>('SELECT is_completed FROM todos WHERE id = ?', [id]);

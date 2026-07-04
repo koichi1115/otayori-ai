@@ -89,6 +89,7 @@ async function initDatabase(database: SQLite.SQLiteDatabase) {
       target_person TEXT NOT NULL,
       description TEXT NOT NULL DEFAULT '',
       is_completed INTEGER NOT NULL DEFAULT 0,
+      reminder_id TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE
     );
@@ -98,4 +99,20 @@ async function initDatabase(database: SQLite.SQLiteDatabase) {
       value TEXT NOT NULL DEFAULT ''
     );
   `);
+
+  // --- Migrations for existing installs (ALTER TABLE is idempotent via catch) ---
+  // v1.1: items にiOSリマインダー登録IDを保持する列を追加
+  await addColumnIfMissing(database, 'items', 'reminder_id', 'TEXT');
+}
+
+async function addColumnIfMissing(
+  database: SQLite.SQLiteDatabase,
+  table: string,
+  column: string,
+  type: string,
+) {
+  const cols = await database.getAllAsync<{ name: string }>(`PRAGMA table_info(${table})`);
+  if (!cols.some((c) => c.name === column)) {
+    await database.execAsync(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
+  }
 }

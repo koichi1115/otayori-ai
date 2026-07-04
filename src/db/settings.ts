@@ -15,6 +15,10 @@ const DEFAULTS: AppSettings = {
   lineChannelAccessToken: null,
   lineUserId: null,
   reminderDaysBefore: '1',
+  accountMode: 'local',
+  appleUserId: null,
+  appleUserEmail: null,
+  onboardingDone: null,
 };
 
 export async function getSetting(key: keyof AppSettings): Promise<string | null> {

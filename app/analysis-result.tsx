@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity
 import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
+import * as Haptics from 'expo-haptics';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { File } from 'expo-file-system';
 import { Colors, Spacing, FontSize, Shadows, BorderRadius } from '../src/constants/theme';
@@ -12,7 +13,11 @@ import {
   deleteTodo, deleteItem, deleteEvent,
   updateDocumentCategory,
   updateTodo, updateItem, updateEvent,
+  setEventCalendarId, setTodoTaskId, setItemReminderId,
 } from '../src/db/documents';
+import {
+  registerEventToIOSCalendar, registerReminderToIOS, PermissionDeniedError,
+} from '../src/services/native-calendar';
 import type { AnalysisResult } from '../src/types';
 
 function renderSummary(text: string) {
@@ -117,6 +122,117 @@ export default function AnalysisResultScreen() {
     const newCat = doc.category === 'action_required' ? 'notice' : 'action_required';
     await updateDocumentCategory(doc.id, newCat);
     loadData();
+  };
+
+  // --- iOSカレンダー / リマインダー登録（v1.1） ---
+  const [registeringIds, setRegisteringIds] = useState<Set<string>>(new Set());
+
+  const markRegistering = (key: string, on: boolean) => {
+    setRegisteringIds(prev => {
+      const next = new Set(prev);
+      if (on) next.add(key); else next.delete(key);
+      return next;
+    });
+  };
+
+  const handleRegisterError = (e: any) => {
+    if (e instanceof PermissionDeniedError) {
+      Alert.alert(
+        '許可が必要です',
+        e.entity === 'calendar'
+          ? 'カレンダーへの追加が許可されていません。設定アプリから許可してください。'
+          : 'リマインダーへのアクセスが許可されていません。設定アプリから許可してください。',
+        [
+          { text: 'キャンセル', style: 'cancel' },
+          { text: '設定を開く', onPress: () => Linking.openSettings() },
+        ]
+      );
+    } else {
+      Alert.alert('登録エラー', e?.message ?? '登録に失敗しました');
+    }
+  };
+
+  const registerEvent = async (e: any) => {
+    const key = `event-${e.id}`;
+    if (registeringIds.has(key)) return;
+    markRegistering(key, true);
+    try {
+      const calId = await registerEventToIOSCalendar({
+        title: e.title, date: e.date, startTime: e.start_time, endTime: e.end_time,
+        location: e.location, targetPerson: e.target_person, description: e.description,
+      });
+      await setEventCalendarId(e.id, calId);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await loadData();
+    } catch (err) {
+      handleRegisterError(err);
+    } finally {
+      markRegistering(key, false);
+    }
+  };
+
+  const registerTodoOrItem = async (kind: 'todo' | 'item', t: any) => {
+    const key = `${kind}-${t.id}`;
+    if (registeringIds.has(key)) return;
+    markRegistering(key, true);
+    try {
+      const remId = await registerReminderToIOS({
+        title: kind === 'item' ? t.name : t.title,
+        dueDate: t.due_date, targetPerson: t.target_person, description: t.description,
+      });
+      if (kind === 'todo') await setTodoTaskId(t.id, remId);
+      else await setItemReminderId(t.id, remId);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await loadData();
+    } catch (err) {
+      handleRegisterError(err);
+    } finally {
+      markRegistering(key, false);
+    }
+  };
+
+  const registerAllEvents = async () => {
+    const targets = events.filter((e: any) => !e.calendar_event_id);
+    let ok = 0;
+    for (const e of targets) {
+      try {
+        const calId = await registerEventToIOSCalendar({
+          title: e.title, date: e.date, startTime: e.start_time, endTime: e.end_time,
+          location: e.location, targetPerson: e.target_person, description: e.description,
+        });
+        await setEventCalendarId(e.id, calId);
+        ok++;
+      } catch (err) {
+        handleRegisterError(err);
+        break; // 権限エラー等は連打しない
+      }
+    }
+    if (ok > 0) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    await loadData();
+  };
+
+  const registerAllReminders = async () => {
+    const targets = [
+      ...todos.filter((t: any) => !t.task_id).map((t: any) => ({ kind: 'todo' as const, row: t })),
+      ...items.filter((i: any) => !i.reminder_id).map((i: any) => ({ kind: 'item' as const, row: i })),
+    ];
+    let ok = 0;
+    for (const { kind, row } of targets) {
+      try {
+        const remId = await registerReminderToIOS({
+          title: kind === 'item' ? row.name : row.title,
+          dueDate: row.due_date, targetPerson: row.target_person, description: row.description,
+        });
+        if (kind === 'todo') await setTodoTaskId(row.id, remId);
+        else await setItemReminderId(row.id, remId);
+        ok++;
+      } catch (err) {
+        handleRegisterError(err);
+        break;
+      }
+    }
+    if (ok > 0) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    await loadData();
   };
 
   const handleDeleteEvent = (id: number, title: string) => {
@@ -231,35 +347,74 @@ export default function AnalysisResultScreen() {
           <View style={styles.sectionHeader}>
             <Ionicons name="calendar" size={18} color={Colors.primary} />
             <Text style={styles.sectionTitle}>イベント ({events.length}件)</Text>
+            <View style={{ flex: 1 }} />
+            {Platform.OS === 'ios' && events.some((e: any) => !e.calendar_event_id) && (
+              <TouchableOpacity
+                style={styles.bulkButton}
+                onPress={registerAllEvents}
+                activeOpacity={0.7}
+                accessibilityLabel="すべてのイベントをカレンダーに登録"
+                accessibilityRole="button"
+              >
+                <Ionicons name="calendar-outline" size={13} color={Colors.primary} />
+                <Text style={styles.bulkButtonText}>すべて登録</Text>
+              </TouchableOpacity>
+            )}
           </View>
           {events.map((e: any) => (
             <View key={e.id} style={[styles.card, styles.eventCard]}>
-              <View style={styles.cardMain}>
-                <Ionicons name="calendar" size={18} color={Colors.primary} />
-                <TouchableOpacity style={styles.cardContent} onPress={() => openEditModal('event', e)} activeOpacity={0.6}>
-                  <View style={styles.cardTitleRow}>
-                    <Text style={styles.cardTitle}>{e.title}</Text>
-                  </View>
-                  <Text style={styles.cardMeta}>
-                    {e.target_person} / {e.date}{e.start_time ? ` ${e.start_time}` : ''}
-                    {e.end_time ? `~${e.end_time}` : ''}
-                  </Text>
-                  {e.location ? (
-                    <View style={styles.locationRow}>
-                      <Ionicons name="location-outline" size={12} color={Colors.textSecondary} />
-                      <Text style={styles.cardMeta}>{e.location}</Text>
+              <View style={styles.cardRow}>
+                <View style={styles.cardMain}>
+                  <Ionicons name="calendar" size={18} color={Colors.primary} />
+                  <TouchableOpacity style={styles.cardContent} onPress={() => openEditModal('event', e)} activeOpacity={0.6}>
+                    <View style={styles.cardTitleRow}>
+                      <Text style={styles.cardTitle}>{e.title}</Text>
                     </View>
-                  ) : null}
-                  {e.description ? <Text style={styles.cardDesc}>{e.description}</Text> : null}
+                    <Text style={styles.cardMeta}>
+                      {e.target_person} / {e.date}{e.start_time ? ` ${e.start_time}` : ''}
+                      {e.end_time ? `~${e.end_time}` : ''}
+                    </Text>
+                    {e.location ? (
+                      <View style={styles.locationRow}>
+                        <Ionicons name="location-outline" size={12} color={Colors.textSecondary} />
+                        <Text style={styles.cardMeta}>{e.location}</Text>
+                      </View>
+                    ) : null}
+                    {e.description ? <Text style={styles.cardDesc}>{e.description}</Text> : null}
+                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity
+                  onPress={() => handleDeleteEvent(e.id, e.title)}
+                  hitSlop={8}
+                  accessibilityLabel={`${e.title}を削除`}
+                >
+                  <Ionicons name="trash-outline" size={18} color={Colors.danger} />
                 </TouchableOpacity>
               </View>
-              <TouchableOpacity
-                onPress={() => handleDeleteEvent(e.id, e.title)}
-                hitSlop={8}
-                accessibilityLabel={`${e.title}を削除`}
-              >
-                <Ionicons name="trash-outline" size={18} color={Colors.danger} />
-              </TouchableOpacity>
+              {Platform.OS === 'ios' && (
+                e.calendar_event_id ? (
+                  <View style={styles.registeredChip}>
+                    <Ionicons name="checkmark-circle" size={14} color={Colors.success} />
+                    <Text style={styles.registeredChipText}>カレンダーに登録済み</Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.registerChip}
+                    onPress={() => registerEvent(e)}
+                    disabled={registeringIds.has(`event-${e.id}`)}
+                    activeOpacity={0.7}
+                    accessibilityLabel={`${e.title}をカレンダーに登録`}
+                    accessibilityRole="button"
+                  >
+                    {registeringIds.has(`event-${e.id}`) ? (
+                      <ActivityIndicator size="small" color={Colors.primary} />
+                    ) : (
+                      <Ionicons name="add-circle-outline" size={14} color={Colors.primary} />
+                    )}
+                    <Text style={styles.registerChipText}>カレンダーに登録</Text>
+                  </TouchableOpacity>
+                )
+              )}
             </View>
           ))}
         </View>
@@ -271,36 +426,75 @@ export default function AnalysisResultScreen() {
           <View style={styles.sectionHeader}>
             <Ionicons name="checkbox-outline" size={18} color={Colors.warning} />
             <Text style={styles.sectionTitle}>TODO ({todos.length}件)</Text>
+            <View style={{ flex: 1 }} />
+            {Platform.OS === 'ios' && (todos.some((t: any) => !t.task_id) || items.some((i: any) => !i.reminder_id)) && (
+              <TouchableOpacity
+                style={styles.bulkButton}
+                onPress={registerAllReminders}
+                activeOpacity={0.7}
+                accessibilityLabel="TODOと持ち物をすべてリマインダーに登録"
+                accessibilityRole="button"
+              >
+                <Ionicons name="alarm-outline" size={13} color={Colors.primary} />
+                <Text style={styles.bulkButtonText}>すべて登録</Text>
+              </TouchableOpacity>
+            )}
           </View>
           {todos.map((t: any) => (
             <View key={t.id} style={[styles.card, styles.todoCard]}>
-              <View style={styles.cardMain}>
+              <View style={styles.cardRow}>
+                <View style={styles.cardMain}>
+                  <TouchableOpacity
+                    onPress={async () => { await toggleTodoCompleted(t.id); loadData(); }}
+                    hitSlop={8}
+                    accessibilityLabel={t.is_completed ? `${t.title}を未完了に戻す` : `${t.title}を完了にする`}
+                  >
+                    <Ionicons
+                      name={t.is_completed ? 'checkbox' : 'square-outline'}
+                      size={22}
+                      color={t.is_completed ? Colors.success : Colors.warning}
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.cardContent} onPress={() => openEditModal('todo', t)} activeOpacity={0.6}>
+                    <Text style={[styles.cardTitle, t.is_completed && styles.completedText]}>{t.title}</Text>
+                    <Text style={styles.cardMeta}>
+                      {t.target_person}{t.due_date ? ` / 期限: ${t.due_date}` : ''}
+                    </Text>
+                    {t.description ? <Text style={styles.cardDesc}>{t.description}</Text> : null}
+                  </TouchableOpacity>
+                </View>
                 <TouchableOpacity
-                  onPress={async () => { await toggleTodoCompleted(t.id); loadData(); }}
+                  onPress={() => handleDeleteTodo(t.id, t.title)}
                   hitSlop={8}
-                  accessibilityLabel={t.is_completed ? `${t.title}を未完了に戻す` : `${t.title}を完了にする`}
+                  accessibilityLabel={`${t.title}を削除`}
                 >
-                  <Ionicons
-                    name={t.is_completed ? 'checkbox' : 'square-outline'}
-                    size={22}
-                    color={t.is_completed ? Colors.success : Colors.warning}
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.cardContent} onPress={() => openEditModal('todo', t)} activeOpacity={0.6}>
-                  <Text style={[styles.cardTitle, t.is_completed && styles.completedText]}>{t.title}</Text>
-                  <Text style={styles.cardMeta}>
-                    {t.target_person}{t.due_date ? ` / 期限: ${t.due_date}` : ''}
-                  </Text>
-                  {t.description ? <Text style={styles.cardDesc}>{t.description}</Text> : null}
+                  <Ionicons name="trash-outline" size={18} color={Colors.danger} />
                 </TouchableOpacity>
               </View>
-              <TouchableOpacity
-                onPress={() => handleDeleteTodo(t.id, t.title)}
-                hitSlop={8}
-                accessibilityLabel={`${t.title}を削除`}
-              >
-                <Ionicons name="trash-outline" size={18} color={Colors.danger} />
-              </TouchableOpacity>
+              {Platform.OS === 'ios' && !t.is_completed && (
+                t.task_id ? (
+                  <View style={styles.registeredChip}>
+                    <Ionicons name="checkmark-circle" size={14} color={Colors.success} />
+                    <Text style={styles.registeredChipText}>リマインダーに登録済み</Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.registerChip}
+                    onPress={() => registerTodoOrItem('todo', t)}
+                    disabled={registeringIds.has(`todo-${t.id}`)}
+                    activeOpacity={0.7}
+                    accessibilityLabel={`${t.title}をリマインダーに登録`}
+                    accessibilityRole="button"
+                  >
+                    {registeringIds.has(`todo-${t.id}`) ? (
+                      <ActivityIndicator size="small" color={Colors.primary} />
+                    ) : (
+                      <Ionicons name="add-circle-outline" size={14} color={Colors.primary} />
+                    )}
+                    <Text style={styles.registerChipText}>リマインダーに登録</Text>
+                  </TouchableOpacity>
+                )
+              )}
             </View>
           ))}
         </View>
@@ -315,33 +509,59 @@ export default function AnalysisResultScreen() {
           </View>
           {items.map((i: any) => (
             <View key={i.id} style={[styles.card, styles.itemCard]}>
-              <View style={styles.cardMain}>
+              <View style={styles.cardRow}>
+                <View style={styles.cardMain}>
+                  <TouchableOpacity
+                    onPress={async () => { await toggleItemCompleted(i.id); loadData(); }}
+                    hitSlop={8}
+                    accessibilityLabel={i.is_completed ? `${i.name}を未完了に戻す` : `${i.name}を完了にする`}
+                  >
+                    <Ionicons
+                      name={i.is_completed ? 'checkbox' : 'square-outline'}
+                      size={22}
+                      color={i.is_completed ? Colors.success : Colors.success}
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.cardContent} onPress={() => openEditModal('item', i)} activeOpacity={0.6}>
+                    <Text style={[styles.cardTitle, i.is_completed && styles.completedText]}>{i.name}</Text>
+                    <Text style={styles.cardMeta}>
+                      {i.target_person}{i.due_date ? ` / 期限: ${i.due_date}` : ''}
+                    </Text>
+                    {i.description ? <Text style={styles.cardDesc}>{i.description}</Text> : null}
+                  </TouchableOpacity>
+                </View>
                 <TouchableOpacity
-                  onPress={async () => { await toggleItemCompleted(i.id); loadData(); }}
+                  onPress={() => handleDeleteItem(i.id, i.name)}
                   hitSlop={8}
-                  accessibilityLabel={i.is_completed ? `${i.name}を未完了に戻す` : `${i.name}を完了にする`}
+                  accessibilityLabel={`${i.name}を削除`}
                 >
-                  <Ionicons
-                    name={i.is_completed ? 'checkbox' : 'square-outline'}
-                    size={22}
-                    color={i.is_completed ? Colors.success : Colors.success}
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.cardContent} onPress={() => openEditModal('item', i)} activeOpacity={0.6}>
-                  <Text style={[styles.cardTitle, i.is_completed && styles.completedText]}>{i.name}</Text>
-                  <Text style={styles.cardMeta}>
-                    {i.target_person}{i.due_date ? ` / 期限: ${i.due_date}` : ''}
-                  </Text>
-                  {i.description ? <Text style={styles.cardDesc}>{i.description}</Text> : null}
+                  <Ionicons name="trash-outline" size={18} color={Colors.danger} />
                 </TouchableOpacity>
               </View>
-              <TouchableOpacity
-                onPress={() => handleDeleteItem(i.id, i.name)}
-                hitSlop={8}
-                accessibilityLabel={`${i.name}を削除`}
-              >
-                <Ionicons name="trash-outline" size={18} color={Colors.danger} />
-              </TouchableOpacity>
+              {Platform.OS === 'ios' && !i.is_completed && (
+                i.reminder_id ? (
+                  <View style={styles.registeredChip}>
+                    <Ionicons name="checkmark-circle" size={14} color={Colors.success} />
+                    <Text style={styles.registeredChipText}>リマインダーに登録済み</Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.registerChip}
+                    onPress={() => registerTodoOrItem('item', i)}
+                    disabled={registeringIds.has(`item-${i.id}`)}
+                    activeOpacity={0.7}
+                    accessibilityLabel={`${i.name}をリマインダーに登録`}
+                    accessibilityRole="button"
+                  >
+                    {registeringIds.has(`item-${i.id}`) ? (
+                      <ActivityIndicator size="small" color={Colors.primary} />
+                    ) : (
+                      <Ionicons name="add-circle-outline" size={14} color={Colors.primary} />
+                    )}
+                    <Text style={styles.registerChipText}>リマインダーに登録</Text>
+                  </TouchableOpacity>
+                )
+              )}
             </View>
           ))}
         </View>
@@ -469,11 +689,34 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: Colors.surface, borderRadius: BorderRadius.md, padding: Spacing.md,
-    marginBottom: Spacing.sm, flexDirection: 'row', alignItems: 'flex-start',
-    justifyContent: 'space-between',
+    marginBottom: Spacing.sm,
     ...Shadows.sm,
   },
+  cardRow: {
+    flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between',
+  },
   cardMain: { flex: 1, flexDirection: 'row', gap: Spacing.sm, alignItems: 'flex-start' },
+  bulkButton: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: Spacing.sm, paddingVertical: 4,
+    borderRadius: BorderRadius.sm, borderWidth: 1, borderColor: Colors.primary,
+    backgroundColor: Colors.primaryLight,
+  },
+  bulkButtonText: { fontSize: FontSize.xs, color: Colors.primary, fontWeight: '600' },
+  registerChip: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
+    alignSelf: 'flex-start',
+    marginTop: Spacing.sm, paddingHorizontal: Spacing.sm, paddingVertical: 5,
+    borderRadius: BorderRadius.sm, borderWidth: 1, borderColor: Colors.primary,
+    backgroundColor: Colors.surface,
+  },
+  registerChipText: { fontSize: FontSize.xs, color: Colors.primary, fontWeight: '600' },
+  registeredChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    alignSelf: 'flex-start', marginTop: Spacing.sm,
+    paddingHorizontal: Spacing.sm, paddingVertical: 5,
+  },
+  registeredChipText: { fontSize: FontSize.xs, color: Colors.success, fontWeight: '600' },
   eventCard: { borderLeftWidth: 3, borderLeftColor: Colors.primary },
   todoCard: { borderLeftWidth: 3, borderLeftColor: Colors.warning },
   itemCard: { borderLeftWidth: 3, borderLeftColor: Colors.success },

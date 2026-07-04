@@ -1,7 +1,9 @@
-import { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, ActivityIndicator, Linking } from 'react-native';
+import { useState, useCallback, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, ActivityIndicator, Linking, Platform } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Haptics from 'expo-haptics';
 import { Colors, Spacing, FontSize, Shadows, BorderRadius } from '../../src/constants/theme';
 import { getAllSettings, setSetting } from '../../src/db/settings';
 import type { AppSettings } from '../../src/types';
@@ -31,6 +33,54 @@ export default function SettingsScreen() {
   const lineRoomId = settings?.lineUserId || '';
   const isLineConnected = !!lineRoomId;
 
+  // --- アカウントモード（v1.1: local / apple） ---
+  const [appleAvailable, setAppleAvailable] = useState(false);
+  useEffect(() => {
+    if (Platform.OS === 'ios') {
+      AppleAuthentication.isAvailableAsync().then(setAppleAvailable).catch(() => setAppleAvailable(false));
+    }
+  }, []);
+
+  const isAppleMode = settings?.accountMode === 'apple';
+
+  const handleAppleSignIn = async () => {
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      await setSetting('appleUserId', credential.user);
+      if (credential.email) await setSetting('appleUserEmail', credential.email);
+      await setSetting('accountMode', 'apple');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      loadSettings();
+    } catch (e: any) {
+      if (e?.code !== 'ERR_REQUEST_CANCELED') {
+        Alert.alert('サインインエラー', 'Appleでのサインインに失敗しました。もう一度お試しください。');
+      }
+    }
+  };
+
+  const handleAppleSignOut = () => {
+    Alert.alert(
+      'サインアウト',
+      'Appleアカウントからサインアウトしますか？\n\nこの端末のデータ（プリント・解析結果）はそのまま残ります。カレンダー・リマインダーへの登録機能も引き続き使えます。',
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: 'サインアウト', style: 'destructive',
+          onPress: async () => {
+            await setSetting('accountMode', 'local');
+            await setSetting('appleUserId', '');
+            loadSettings();
+          },
+        },
+      ]
+    );
+  };
+
   if (loading || !settings) {
     return (
       <View style={styles.loadingContainer}>
@@ -41,6 +91,61 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={styles.container}>
+      {/* アカウント */}
+      {Platform.OS === 'ios' && (
+        <>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="person-circle-outline" size={20} color={Colors.text} />
+            <Text style={styles.sectionTitle}>アカウント</Text>
+          </View>
+          <View style={styles.card}>
+            {isAppleMode ? (
+              <>
+                <View style={styles.connectedRow}>
+                  <View style={styles.statusDot} />
+                  <Text style={styles.connectedText}>Appleアカウントでサインイン中</Text>
+                </View>
+                <Text style={styles.hint}>
+                  予定はiOSカレンダー、TODO・持ち物はiOSリマインダーに登録できます。iCloud同期は近日対応予定です。
+                </Text>
+                <TouchableOpacity
+                  style={styles.dangerButton}
+                  onPress={handleAppleSignOut}
+                  activeOpacity={0.7}
+                  accessibilityLabel="Appleアカウントからサインアウト"
+                  accessibilityRole="button"
+                >
+                  <Ionicons name="log-out-outline" size={16} color={Colors.danger} />
+                  <Text style={styles.dangerButtonText}>サインアウト</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <View style={styles.connectedRow}>
+                  <Ionicons name="phone-portrait-outline" size={16} color={Colors.primary} />
+                  <Text style={styles.modeText}>この端末で利用中（登録不要）</Text>
+                </View>
+                <Text style={styles.hint}>
+                  データはこの端末に保存されます。予定・TODOはiOSカレンダー/リマインダーに登録できます。
+                </Text>
+                {appleAvailable && (
+                  <>
+                    <AppleAuthentication.AppleAuthenticationButton
+                      buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                      buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                      cornerRadius={BorderRadius.sm}
+                      style={styles.appleButton}
+                      onPress={handleAppleSignIn}
+                    />
+                    <Text style={styles.hint}>サインインすると、将来のiCloud同期（近日対応）に備えられます</Text>
+                  </>
+                )}
+              </>
+            )}
+          </View>
+        </>
+      )}
+
       {/* LINE */}
       <View style={styles.sectionHeader}>
         <Ionicons name="chatbubble-outline" size={20} color={Colors.text} />
@@ -172,6 +277,8 @@ const styles = StyleSheet.create({
   connectedRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   statusDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: Colors.success },
   connectedText: { fontSize: FontSize.md, fontWeight: '600', color: Colors.success },
+  modeText: { fontSize: FontSize.md, fontWeight: '600', color: Colors.text },
+  appleButton: { width: '100%', height: 44, marginTop: Spacing.md },
   descText: { fontSize: FontSize.sm, color: Colors.textSecondary, lineHeight: 20, marginBottom: Spacing.sm },
   hint: { fontSize: FontSize.xs, color: Colors.textSecondary, marginTop: Spacing.xs, lineHeight: 16 },
   lineButton: {
