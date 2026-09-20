@@ -43,7 +43,9 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "カメラでプリントをスキャンするために使用します"
+          "cameraPermission": "カメラでプリントをスキャンするために使用します",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
         }
       ],
       [
