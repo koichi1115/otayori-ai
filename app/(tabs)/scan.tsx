@@ -4,7 +4,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, FontSize, Shadows, BorderRadius } from '../../src/constants/theme';
+import { Colors, Spacing, Type, Shadows, BorderRadius, TouchTarget } from '../../src/constants/theme';
 import { analyzePDF } from '../../src/services/llm';
 import { sendLineNotification } from '../../src/services/line-notify';
 import { getDatabase } from '../../src/db/database';
@@ -167,8 +167,8 @@ export default function ScanScreen() {
         accessibilityLabel="ファイルから選択"
         accessibilityRole="button"
       >
-        <View style={[styles.iconCircle, { backgroundColor: Colors.primaryLight }]}>
-          <Ionicons name="document" size={32} color={Colors.primary} />
+        <View style={styles.iconCircle}>
+          <Ionicons name="document-outline" size={32} color={Colors.primary} />
         </View>
         <Text style={styles.optionTitle}>ファイルから選択</Text>
         <Text style={styles.optionDesc}>PDF・JPG・PNGに対応</Text>
@@ -181,8 +181,8 @@ export default function ScanScreen() {
         accessibilityLabel="カメラでスキャン"
         accessibilityRole="button"
       >
-        <View style={[styles.iconCircle, { backgroundColor: '#FFF3E0' }]}>
-          <Ionicons name="camera" size={32} color={Colors.secondary} />
+        <View style={styles.iconCircle}>
+          <Ionicons name="camera-outline" size={32} color={Colors.primary} />
         </View>
         <Text style={styles.optionTitle}>カメラでスキャン</Text>
         <Text style={styles.optionDesc}>プリントを撮影してPDF化</Text>
@@ -196,25 +196,26 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   content: { padding: Spacing.lg, paddingBottom: Spacing.xl },
   headerArea: { alignItems: 'center', marginBottom: Spacing.lg },
-  title: { fontSize: FontSize.xl, fontWeight: 'bold', color: Colors.text, marginTop: Spacing.sm },
-  subtitle: { fontSize: FontSize.md, color: Colors.textSecondary, marginTop: Spacing.xs, textAlign: 'center' },
+  title: { ...Type.title, color: Colors.text, marginTop: Spacing.sm },
+  subtitle: { ...Type.body, color: Colors.textSecondary, marginTop: Spacing.xs, textAlign: 'center' },
   option: {
     backgroundColor: Colors.surface, borderRadius: BorderRadius.lg, padding: Spacing.lg,
-    marginBottom: Spacing.md, alignItems: 'center',
-    ...Shadows.md,
+    marginBottom: Spacing.md, alignItems: 'center', minHeight: TouchTarget.min,
+    ...Shadows.card,
   },
   iconCircle: {
-    width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center',
+    width: 64, height: 64, borderRadius: BorderRadius.full,
+    backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center',
     marginBottom: Spacing.sm,
   },
-  optionTitle: { fontSize: FontSize.lg, fontWeight: '600', color: Colors.text },
-  optionDesc: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 2 },
+  optionTitle: { ...Type.leadStrong, color: Colors.text },
+  optionDesc: { ...Type.caption, color: Colors.textSecondary, marginTop: 2 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background, padding: Spacing.lg },
   loadingCard: {
     backgroundColor: Colors.surface, borderRadius: BorderRadius.lg, padding: Spacing.xl,
     alignItems: 'center', width: '100%',
-    ...Shadows.md,
+    ...Shadows.card,
   },
-  loadingText: { fontSize: FontSize.lg, fontWeight: '600', color: Colors.text, marginTop: Spacing.lg },
-  loadingHint: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: Spacing.sm },
+  loadingText: { ...Type.leadStrong, color: Colors.text, marginTop: Spacing.lg },
+  loadingHint: { ...Type.caption, color: Colors.textSecondary, marginTop: Spacing.sm },
 });

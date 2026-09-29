@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, FontSize, BorderRadius, Shadows } from '../src/constants/theme';
+import { Colors, Spacing, Type, BorderRadius, Shadows } from '../src/constants/theme';
 import { setSetting } from '../src/db/settings';
 
 /**
@@ -26,7 +26,7 @@ export default function LinkLineScreen() {
   if (!id) {
     return (
       <View style={styles.container}>
-        <Ionicons name="alert-circle" size={48} color={Colors.danger} />
+        <Ionicons name="alert-circle-outline" size={48} color={Colors.danger} />
         <Text style={styles.title}>連携エラー</Text>
         <Text style={styles.desc}>IDが見つかりません。LINEから再度お試しください。</Text>
       </View>
@@ -36,7 +36,7 @@ export default function LinkLineScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.card}>
-        <Ionicons name="checkmark-circle" size={64} color={Colors.success} />
+        <Ionicons name="checkmark-circle-outline" size={64} color={Colors.primary} />
         <Text style={styles.title}>LINE連携完了！</Text>
         <Text style={styles.desc}>プリントの通知がLINEに届くようになりました</Text>
       </View>
@@ -52,14 +52,14 @@ const styles = StyleSheet.create({
   card: {
     alignItems: 'center', backgroundColor: Colors.surface,
     borderRadius: BorderRadius.lg, padding: Spacing.xl,
-    width: '100%', ...Shadows.md,
+    width: '100%', ...Shadows.card,
   },
   title: {
-    fontSize: FontSize.xl, fontWeight: 'bold', color: Colors.text,
+    ...Type.title, color: Colors.text,
     marginTop: Spacing.md,
   },
   desc: {
-    fontSize: FontSize.md, color: Colors.textSecondary,
+    ...Type.body, color: Colors.textSecondary,
     marginTop: Spacing.sm, textAlign: 'center',
   },
 });
