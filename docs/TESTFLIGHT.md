@@ -64,7 +64,7 @@ npx expo prebuild --platform ios --clean
 ```
 
 - この場合は §2 の prebuild をやり直す（本体・拡張の両方に反映される）。
-- prebuild 後に Xcode で直接変える場合は、**本体ターゲットと ShareExtension ターゲットの両方**の Build（CURRENT_PROJECT_VERSION）と Version（MARKETING_VERSION）を同じ値にする。拡張だけ違うとアップロード検証で弾かれることがある。
+- prebuild 後に Xcode で直接変える場合は、**本体ターゲットと ShareExtension ターゲットの両方**の Build（CURRENT_PROJECT_VERSION）と Version（MARKETING_VERSION）を同じ値にする。拡張だけ古い値のままだと、アップロード時の検証で警告・エラーになることがある（要確認）。
 
 ## 4. Xcode で署名を設定
 
