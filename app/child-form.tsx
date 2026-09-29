@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert,
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Colors, Spacing, FontSize, Shadows, BorderRadius } from '../src/constants/theme';
+import { Colors, Spacing, Type, FontWeight, Shadows, BorderRadius, BorderWidth, TouchTarget } from '../src/constants/theme';
 import { getChild, createChild, updateChild } from '../src/db/children';
 import { getFacilities } from '../src/db/facilities';
 import type { Facility } from '../src/types';
@@ -69,23 +69,23 @@ export default function ChildFormScreen() {
         <Text style={styles.label}>性別</Text>
         <View style={styles.segmented}>
           <TouchableOpacity
-            style={[styles.segment, gender === 'male' && styles.segmentActiveMale]}
+            style={[styles.segment, gender === 'male' && styles.segmentActive]}
             onPress={() => setGender('male')}
             activeOpacity={0.7}
             accessibilityLabel="男の子"
             accessibilityRole="button"
           >
-            <Ionicons name="male" size={16} color={gender === 'male' ? '#fff' : '#1976D2'} />
+            <Ionicons name="male-outline" size={16} color={gender === 'male' ? Colors.onPrimary : Colors.textSecondary} />
             <Text style={[styles.segmentText, gender === 'male' && styles.segmentTextActive]}>男の子</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.segment, gender === 'female' && styles.segmentActiveFemale]}
+            style={[styles.segment, gender === 'female' && styles.segmentActive]}
             onPress={() => setGender('female')}
             activeOpacity={0.7}
             accessibilityLabel="女の子"
             accessibilityRole="button"
           >
-            <Ionicons name="female" size={16} color={gender === 'female' ? '#fff' : '#C2185B'} />
+            <Ionicons name="female-outline" size={16} color={gender === 'female' ? Colors.onPrimary : Colors.textSecondary} />
             <Text style={[styles.segmentText, gender === 'female' && styles.segmentTextActive]}>女の子</Text>
           </TouchableOpacity>
         </View>
@@ -162,7 +162,7 @@ export default function ChildFormScreen() {
                 accessibilityRole="button"
               >
                 <Ionicons
-                  name={facilityId === f.id ? 'checkmark-circle' : 'ellipse-outline'}
+                  name={facilityId === f.id ? 'checkmark-circle-outline' : 'ellipse-outline'}
                   size={20}
                   color={facilityId === f.id ? Colors.primary : Colors.textSecondary}
                 />
@@ -182,7 +182,7 @@ export default function ChildFormScreen() {
         accessibilityLabel={isEdit ? '子供の情報を更新' : '子供を追加'}
         accessibilityRole="button"
       >
-        <Ionicons name={isEdit ? 'checkmark' : 'add'} size={20} color="#fff" />
+        <Ionicons name={isEdit ? 'checkmark' : 'add'} size={20} color={Colors.onPrimary} />
         <Text style={styles.saveButtonText}>{isEdit ? '更新' : '追加'}</Text>
       </TouchableOpacity>
 
@@ -196,50 +196,54 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: Colors.surface, borderRadius: BorderRadius.md, padding: Spacing.md,
     marginBottom: Spacing.md,
-    ...Shadows.sm,
+    ...Shadows.card,
   },
-  label: { fontSize: FontSize.sm, fontWeight: '500', color: Colors.textSecondary, marginTop: Spacing.md, marginBottom: Spacing.xs },
+  label: { ...Type.captionMedium, color: Colors.textSecondary, marginTop: Spacing.md, marginBottom: Spacing.xs },
   input: {
-    borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.sm, padding: Spacing.sm,
-    fontSize: FontSize.md, backgroundColor: Colors.background, color: Colors.text,
+    borderWidth: BorderWidth.thin, borderColor: Colors.border, borderRadius: BorderRadius.sm, padding: Spacing.sm,
+    minHeight: TouchTarget.min,
+    ...Type.body, backgroundColor: Colors.background, color: Colors.text,
   },
   segmented: { flexDirection: 'row', gap: Spacing.sm },
   segment: {
     flex: 1, flexDirection: 'row', paddingVertical: Spacing.sm, borderRadius: BorderRadius.sm,
     alignItems: 'center', justifyContent: 'center', gap: Spacing.xs,
-    backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
+    minHeight: TouchTarget.min,
+    backgroundColor: Colors.surface, borderWidth: BorderWidth.thin, borderColor: Colors.border,
   },
-  segmentActiveMale: { backgroundColor: '#1976D2', borderColor: '#1976D2' },
-  segmentActiveFemale: { backgroundColor: '#C2185B', borderColor: '#C2185B' },
-  segmentText: { fontSize: FontSize.md, color: Colors.text },
-  segmentTextActive: { color: '#fff', fontWeight: '600' },
+  segmentActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  segmentText: { ...Type.body, color: Colors.text },
+  segmentTextActive: { color: Colors.onPrimary, fontWeight: FontWeight.semibold },
   noFacility: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, paddingVertical: Spacing.sm },
-  hint: { fontSize: FontSize.sm, color: Colors.textSecondary },
+  hint: { ...Type.caption, color: Colors.textSecondary },
   facilityList: { gap: Spacing.xs },
   facilityOption: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
     padding: Spacing.sm, borderRadius: BorderRadius.sm, backgroundColor: Colors.background,
-    borderWidth: 1, borderColor: Colors.border,
+    minHeight: TouchTarget.min,
+    borderWidth: BorderWidth.thin, borderColor: Colors.border,
   },
-  facilityOptionActive: { borderColor: Colors.primary, backgroundColor: Colors.primaryLight },
-  facilityText: { fontSize: FontSize.md, color: Colors.text },
-  facilityTextActive: { color: Colors.primary, fontWeight: '600' },
+  facilityOptionActive: { borderColor: Colors.primary, backgroundColor: Colors.surface },
+  facilityText: { ...Type.body, color: Colors.text },
+  facilityTextActive: { color: Colors.primary, fontWeight: FontWeight.semibold },
   saveButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm,
     backgroundColor: Colors.primary, borderRadius: BorderRadius.md, padding: Spacing.md,
-    marginTop: Spacing.sm,
-    ...Shadows.md,
+    marginTop: Spacing.sm, minHeight: TouchTarget.min,
+    ...Shadows.raised,
   },
-  saveButtonText: { color: '#fff', fontSize: FontSize.lg, fontWeight: '600' },
+  saveButtonText: { ...Type.leadStrong, color: Colors.onPrimary },
   dateButton: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
-    borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.sm, padding: Spacing.sm,
+    borderWidth: BorderWidth.thin, borderColor: Colors.border, borderRadius: BorderRadius.sm, padding: Spacing.sm,
+    minHeight: TouchTarget.min,
     backgroundColor: Colors.background,
   },
-  dateButtonText: { fontSize: FontSize.md, color: Colors.text },
+  dateButtonText: { ...Type.body, color: Colors.text },
   dateConfirmButton: {
-    alignSelf: 'flex-end', paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs,
+    alignSelf: 'flex-end', paddingHorizontal: Spacing.md,
+    justifyContent: 'center', minHeight: TouchTarget.min,
     marginTop: Spacing.xs,
   },
-  dateConfirmText: { fontSize: FontSize.md, color: Colors.primary, fontWeight: '600' },
+  dateConfirmText: { ...Type.bodyStrong, color: Colors.primary },
 });

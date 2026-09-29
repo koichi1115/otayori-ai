@@ -15,7 +15,28 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCalendarsWriteOnlyAccessUsageDescription": "抽出した予定をカレンダーに追加するために使用します",
-        "NSRemindersFullAccessUsageDescription": "TODO・持ち物をリマインダーに登録するために使用します"
+        "NSRemindersFullAccessUsageDescription": "TODO・持ち物をリマインダーに登録するために使用します",
+        "LSSupportsOpeningDocumentsInPlace": false,
+        "CFBundleDocumentTypes": [
+          {
+            "CFBundleTypeName": "PDF",
+            "CFBundleTypeRole": "Viewer",
+            "LSHandlerRank": "Alternate",
+            "LSItemContentTypes": [
+              "com.adobe.pdf"
+            ]
+          },
+          {
+            "CFBundleTypeName": "Image",
+            "CFBundleTypeRole": "Viewer",
+            "LSHandlerRank": "Alternate",
+            "LSItemContentTypes": [
+              "public.jpeg",
+              "public.png",
+              "public.heic"
+            ]
+          }
+        ]
       }
     },
     "android": {
@@ -29,7 +50,6 @@
     },
     "extra": {
       "claudeApiKey": "${CLAUDE_API_KEY}",
-      "claudeModel": "claude-haiku-4-5-20251001",
       "googleOAuthClientId": "539790701575-bhu998if0q5shkbg64c06ukbt4c9m0pk.apps.googleusercontent.com",
       "router": {},
       "eas": {
@@ -65,10 +85,7 @@
       [
         "expo-share-intent",
         {
-          "iosActivationRules": {
-            "NSExtensionActivationSupportsFileWithMaxCount": 1,
-            "NSExtensionActivationSupportsImageWithMaxCount": 1
-          }
+          "iosActivationRules": "SUBQUERY (extensionItems, $extensionItem, SUBQUERY ($extensionItem.attachments, $attachment, ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO \"com.adobe.pdf\" || ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO \"public.image\" || ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO \"public.file-url\").@count == $extensionItem.attachments.@count).@count >= 1"
         }
       ],
       "expo-font"

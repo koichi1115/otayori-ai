@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Linking } from 
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, FontSize, Spacing } from '../src/constants/theme';
+import { Colors, Type, Spacing, BorderRadius, BorderWidth, TouchTarget, IconButton } from '../src/constants/theme';
 
 export default function CameraScanScreen() {
   const cameraRef = useRef<CameraView>(null);
@@ -62,6 +62,8 @@ export default function CameraScanScreen() {
     }
   };
 
+  const flashOn = flash === 'on';
+
   return (
     <View style={styles.container}>
       <CameraView
@@ -74,14 +76,14 @@ export default function CameraScanScreen() {
         {/* Top bar */}
         <SafeAreaView style={styles.topBar}>
           <TouchableOpacity onPress={() => router.back()} style={styles.topButton}>
-            <Ionicons name="close" size={28} color="white" />
+            <Ionicons name="close" size={28} color={Colors.onCamera} />
           </TouchableOpacity>
           <Text style={styles.topTitle}>プリントを撮影</Text>
           <TouchableOpacity
             onPress={() => setFlash(f => f === 'off' ? 'on' : 'off')}
             style={styles.topButton}
           >
-            <Ionicons name={flash === 'off' ? 'flash-off' : 'flash'} size={24} color="white" />
+            <Ionicons name={flashOn ? 'flash-outline' : 'flash-off-outline'} size={24} color={Colors.onCamera} />
           </TouchableOpacity>
         </SafeAreaView>
 
@@ -108,41 +110,43 @@ export default function CameraScanScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: 'black' },
+  container: { flex: 1, backgroundColor: Colors.cameraBackground },
   camera: { flex: 1 },
   permissionContainer: {
     flex: 1, backgroundColor: Colors.background, justifyContent: 'center', alignItems: 'center', padding: Spacing.xl,
   },
-  permissionTitle: { fontSize: FontSize.xl, fontWeight: 'bold', color: Colors.text, marginTop: Spacing.lg },
-  permissionDesc: { fontSize: FontSize.md, color: Colors.textSecondary, textAlign: 'center', marginTop: Spacing.sm },
+  permissionTitle: { ...Type.title, color: Colors.text, marginTop: Spacing.lg },
+  permissionDesc: { ...Type.body, color: Colors.textSecondary, textAlign: 'center', marginTop: Spacing.sm },
   permissionButton: {
-    backgroundColor: Colors.primary, paddingVertical: 14, paddingHorizontal: 32,
-    borderRadius: 12, marginTop: Spacing.xl,
+    backgroundColor: Colors.primary, paddingHorizontal: Spacing.xl,
+    justifyContent: 'center', minHeight: TouchTarget.min,
+    borderRadius: BorderRadius.md, marginTop: Spacing.xl,
   },
-  permissionButtonText: { color: 'white', fontSize: FontSize.lg, fontWeight: '600' },
-  cancelButton: { marginTop: Spacing.md },
-  cancelButtonText: { color: Colors.textSecondary, fontSize: FontSize.md },
+  permissionButtonText: { ...Type.leadStrong, color: Colors.onPrimary },
+  cancelButton: { justifyContent: 'center', minHeight: TouchTarget.min, marginTop: Spacing.sm },
+  cancelButtonText: { ...Type.body, color: Colors.textSecondary },
   topBar: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: Spacing.md, paddingTop: Spacing.sm,
   },
-  topButton: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  topTitle: { color: 'white', fontSize: FontSize.lg, fontWeight: '600' },
+  topButton: { ...IconButton },
+  topTitle: { ...Type.leadStrong, color: Colors.onCamera },
   guideContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: Spacing.xl },
   guideFrame: {
     width: '90%', aspectRatio: 0.707, // A4 ratio
-    borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)', borderRadius: 8,
+    borderWidth: BorderWidth.thin, borderColor: Colors.cameraGuide, borderRadius: BorderRadius.lg,
     justifyContent: 'flex-end', alignItems: 'center', paddingBottom: Spacing.md,
   },
-  guideText: { color: 'rgba(255,255,255,0.7)', fontSize: FontSize.sm, textAlign: 'center' },
+  guideText: { ...Type.caption, color: Colors.onCamera, textAlign: 'center' },
   bottomBar: { alignItems: 'center', paddingBottom: Spacing.lg },
   shutterButton: {
-    width: 72, height: 72, borderRadius: 36,
-    borderWidth: 4, borderColor: 'white',
+    width: 72, height: 72, borderRadius: BorderRadius.full,
+    minWidth: TouchTarget.min, minHeight: TouchTarget.min,
+    borderWidth: BorderWidth.thin, borderColor: Colors.onCamera,
     justifyContent: 'center', alignItems: 'center',
   },
   shutterDisabled: { opacity: 0.5 },
   shutterInner: {
-    width: 58, height: 58, borderRadius: 29, backgroundColor: 'white',
+    width: 58, height: 58, borderRadius: BorderRadius.full, backgroundColor: Colors.onCamera,
   },
 });

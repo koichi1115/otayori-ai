@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, RefreshControl, ActivityIndicator } from 'react-native';
 import { useFocusEffect, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, FontSize, Shadows, BorderRadius } from '../../src/constants/theme';
+import { Colors, Spacing, Type, FontWeight, Shadows, BorderRadius, BorderWidth, TouchTarget } from '../../src/constants/theme';
 import { getDatabase } from '../../src/db/database';
 
 interface DocRow {
@@ -63,9 +63,9 @@ export default function HistoryScreen() {
     >
       <View style={styles.cardLeft}>
         <Ionicons
-          name={item.category === 'action_required' ? 'alert-circle' : 'information-circle'}
+          name={item.category === 'action_required' ? 'alert-circle-outline' : 'information-circle-outline'}
           size={24}
-          color={item.category === 'action_required' ? '#C0392B' : Colors.primary}
+          color={item.category === 'action_required' ? Colors.primary : Colors.textSecondary}
         />
       </View>
       <View style={styles.cardBody}>
@@ -129,7 +129,7 @@ export default function HistoryScreen() {
             <Ionicons
               name={f.icon}
               size={14}
-              color={filterCategory === f.key ? '#fff' : Colors.text}
+              color={filterCategory === f.key ? Colors.onPrimary : Colors.text}
             />
             <Text style={[styles.filterText, filterCategory === f.key && styles.filterTextActive]}>
               {f.label}
@@ -171,40 +171,37 @@ const styles = StyleSheet.create({
   searchContainer: { paddingHorizontal: Spacing.md, paddingTop: Spacing.sm },
   searchBar: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.md, paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs,
-    gap: Spacing.xs, borderWidth: 1, borderColor: Colors.border,
+    borderRadius: BorderRadius.md, paddingHorizontal: Spacing.sm,
+    gap: Spacing.xs, borderWidth: BorderWidth.thin, borderColor: Colors.border,
   },
-  searchInput: { flex: 1, fontSize: FontSize.md, paddingVertical: Spacing.xs, color: Colors.text },
+  searchInput: { flex: 1, ...Type.body, minHeight: TouchTarget.min, color: Colors.text },
   filterRow: {
     flexDirection: 'row', paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm,
     gap: Spacing.xs,
   },
   filterChip: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.xs,
-    paddingHorizontal: 12, paddingVertical: 6, borderRadius: BorderRadius.full,
-    backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.xs,
+    paddingHorizontal: Spacing.md, minHeight: TouchTarget.min, borderRadius: BorderRadius.full,
+    backgroundColor: Colors.surface, borderWidth: BorderWidth.thin, borderColor: Colors.border,
   },
   filterChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  filterText: { fontSize: FontSize.sm, color: Colors.text },
-  filterTextActive: { color: '#fff', fontWeight: '600' },
+  filterText: { ...Type.caption, color: Colors.text },
+  filterTextActive: { color: Colors.onPrimary, fontWeight: FontWeight.semibold },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: Spacing.lg },
-  emptyTitle: { fontSize: FontSize.lg, fontWeight: '600', color: Colors.textSecondary, marginTop: Spacing.md },
-  emptyText: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: Spacing.xs, textAlign: 'center' },
+  emptyTitle: { ...Type.leadStrong, color: Colors.textSecondary, marginTop: Spacing.md },
+  emptyText: { ...Type.caption, color: Colors.textSecondary, marginTop: Spacing.xs, textAlign: 'center' },
   card: {
     backgroundColor: Colors.surface, borderRadius: BorderRadius.md, padding: Spacing.md,
-    marginBottom: Spacing.sm, flexDirection: 'row', gap: Spacing.sm,
-    ...Shadows.sm,
+    marginBottom: Spacing.sm, minHeight: TouchTarget.min, flexDirection: 'row', gap: Spacing.sm,
+    ...Shadows.card,
   },
   cardLeft: { justifyContent: 'center' },
   cardBody: { flex: 1 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.xs },
-  badge: {
-    fontSize: FontSize.xs, fontWeight: '600', paddingHorizontal: 6, paddingVertical: 2,
-    borderRadius: 4, overflow: 'hidden',
-  },
-  badgeAction: { backgroundColor: Colors.actionRequired, color: '#8B0000' },
-  badgeNotice: { backgroundColor: Colors.notice, color: '#003366' },
-  date: { fontSize: FontSize.xs, color: Colors.textSecondary },
-  title: { fontSize: FontSize.md, fontWeight: '600', color: Colors.text },
-  source: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 2 },
+  badge: { ...Type.captionStrong },
+  badgeAction: { color: Colors.primary },
+  badgeNotice: { color: Colors.textSecondary },
+  date: { ...Type.caption, color: Colors.textSecondary },
+  title: { ...Type.bodyStrong, color: Colors.text },
+  source: { ...Type.caption, color: Colors.textSecondary, marginTop: 2 },
 });

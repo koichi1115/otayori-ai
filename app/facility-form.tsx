@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, FontSize, Shadows, BorderRadius } from '../src/constants/theme';
+import { Colors, Spacing, Type, FontWeight, Shadows, BorderRadius, BorderWidth, TouchTarget } from '../src/constants/theme';
 import { getFacility, createFacility, updateFacility } from '../src/db/facilities';
 
 const FACILITY_TYPES: { label: string; value: 'nursery' | 'school' | 'lesson'; icon: keyof typeof Ionicons.glyphMap }[] = [
@@ -72,7 +72,7 @@ export default function FacilityFormScreen() {
               <Ionicons
                 name={opt.icon}
                 size={18}
-                color={type === opt.value ? '#fff' : Colors.text}
+                color={type === opt.value ? Colors.onPrimary : Colors.text}
               />
               <Text style={[styles.segmentText, type === opt.value && styles.segmentTextActive]}>
                 {opt.label}
@@ -111,7 +111,7 @@ export default function FacilityFormScreen() {
         accessibilityLabel={isEdit ? '施設情報を更新' : '施設を追加'}
         accessibilityRole="button"
       >
-        <Ionicons name={isEdit ? 'checkmark' : 'add'} size={20} color="#fff" />
+        <Ionicons name={isEdit ? 'checkmark' : 'add'} size={20} color={Colors.onPrimary} />
         <Text style={styles.saveButtonText}>{isEdit ? '更新' : '追加'}</Text>
       </TouchableOpacity>
 
@@ -125,28 +125,30 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: Colors.surface, borderRadius: BorderRadius.md, padding: Spacing.md,
     marginBottom: Spacing.md,
-    ...Shadows.sm,
+    ...Shadows.card,
   },
-  label: { fontSize: FontSize.sm, fontWeight: '500', color: Colors.textSecondary, marginTop: Spacing.md, marginBottom: Spacing.xs },
+  label: { ...Type.captionMedium, color: Colors.textSecondary, marginTop: Spacing.md, marginBottom: Spacing.xs },
   input: {
-    borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.sm, padding: Spacing.sm,
-    fontSize: FontSize.md, backgroundColor: Colors.background, color: Colors.text,
+    borderWidth: BorderWidth.thin, borderColor: Colors.border, borderRadius: BorderRadius.sm, padding: Spacing.sm,
+    minHeight: TouchTarget.min,
+    ...Type.body, backgroundColor: Colors.background, color: Colors.text,
   },
   textArea: { height: 100, textAlignVertical: 'top' },
   segmented: { flexDirection: 'row', gap: Spacing.xs },
   segment: {
     flex: 1, flexDirection: 'row', paddingVertical: Spacing.sm, borderRadius: BorderRadius.sm,
     alignItems: 'center', justifyContent: 'center', gap: Spacing.xs,
-    backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
+    minHeight: TouchTarget.min,
+    backgroundColor: Colors.surface, borderWidth: BorderWidth.thin, borderColor: Colors.border,
   },
   segmentActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  segmentText: { fontSize: FontSize.md, color: Colors.text },
-  segmentTextActive: { color: '#fff', fontWeight: '600' },
+  segmentText: { ...Type.body, color: Colors.text },
+  segmentTextActive: { color: Colors.onPrimary, fontWeight: FontWeight.semibold },
   saveButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm,
     backgroundColor: Colors.primary, borderRadius: BorderRadius.md, padding: Spacing.md,
-    marginTop: Spacing.sm,
-    ...Shadows.md,
+    marginTop: Spacing.sm, minHeight: TouchTarget.min,
+    ...Shadows.raised,
   },
-  saveButtonText: { color: '#fff', fontSize: FontSize.lg, fontWeight: '600' },
+  saveButtonText: { ...Type.leadStrong, color: Colors.onPrimary },
 });
