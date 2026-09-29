@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, RefreshControl } from 'react-native';
 import { useFocusEffect, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, FontSize, Shadows, BorderRadius } from '../../src/constants/theme';
+import { Colors, Spacing, Type, Shadows, BorderRadius, BorderWidth, TouchTarget, IconButton, hitSlopFor } from '../../src/constants/theme';
 import { getChildren, deleteChild } from '../../src/db/children';
 import { getFacilities, deleteFacility } from '../../src/db/facilities';
 import type { Child, Facility } from '../../src/types';
@@ -47,6 +47,9 @@ export default function ChildrenScreen() {
     return '習い事';
   };
 
+  const genderIcon = (gender: Child['gender']): keyof typeof Ionicons.glyphMap =>
+    gender === 'male' ? 'male-outline' : 'female-outline';
+
   const facilityTypeIcon = (type: string): keyof typeof Ionicons.glyphMap => {
     if (type === 'nursery') return 'happy-outline';
     if (type === 'school') return 'school-outline';
@@ -69,8 +72,9 @@ export default function ChildrenScreen() {
           activeOpacity={0.7}
           accessibilityLabel="子供を追加"
           accessibilityRole="button"
+          hitSlop={hitSlopFor(28, 28)}
         >
-          <Ionicons name="add-circle" size={28} color={Colors.primary} />
+          <Ionicons name="add-circle-outline" size={28} color={Colors.primary} />
         </TouchableOpacity>
       </View>
 
@@ -94,12 +98,8 @@ export default function ChildrenScreen() {
           return (
             <View key={child.id} style={styles.card}>
               <View style={styles.cardIconArea}>
-                <View style={[styles.avatarCircle, { backgroundColor: child.gender === 'male' ? '#E3F2FD' : '#FCE4EC' }]}>
-                  <Ionicons
-                    name={child.gender === 'male' ? 'male' : 'female'}
-                    size={20}
-                    color={child.gender === 'male' ? '#1976D2' : '#C2185B'}
-                  />
+                <View style={styles.avatarCircle}>
+                  <Ionicons name={genderIcon(child.gender)} size={20} color={Colors.textSecondary} />
                 </View>
               </View>
               <View style={styles.cardBody}>
@@ -112,16 +112,16 @@ export default function ChildrenScreen() {
               </View>
               <View style={styles.cardActions}>
                 <TouchableOpacity
+                  style={styles.iconButton}
                   onPress={() => router.push({ pathname: '/child-form', params: { id: String(child.id) } })}
                   accessibilityLabel={`${child.name}を編集`}
-                  hitSlop={8}
                 >
                   <Ionicons name="create-outline" size={22} color={Colors.primary} />
                 </TouchableOpacity>
                 <TouchableOpacity
+                  style={styles.iconButton}
                   onPress={() => confirmDeleteChild(child)}
                   accessibilityLabel={`${child.name}を削除`}
-                  hitSlop={8}
                 >
                   <Ionicons name="trash-outline" size={22} color={Colors.danger} />
                 </TouchableOpacity>
@@ -142,8 +142,9 @@ export default function ChildrenScreen() {
           activeOpacity={0.7}
           accessibilityLabel="施設を追加"
           accessibilityRole="button"
+          hitSlop={hitSlopFor(28, 28)}
         >
-          <Ionicons name="add-circle" size={28} color={Colors.primary} />
+          <Ionicons name="add-circle-outline" size={28} color={Colors.primary} />
         </TouchableOpacity>
       </View>
 
@@ -165,8 +166,8 @@ export default function ChildrenScreen() {
         facilities.map((facility) => (
           <View key={facility.id} style={styles.card}>
             <View style={styles.cardIconArea}>
-              <View style={[styles.avatarCircle, { backgroundColor: '#E8F5E9' }]}>
-                <Ionicons name={facilityTypeIcon(facility.type)} size={20} color={Colors.success} />
+              <View style={styles.avatarCircle}>
+                <Ionicons name={facilityTypeIcon(facility.type)} size={20} color={Colors.textSecondary} />
               </View>
             </View>
             <View style={styles.cardBody}>
@@ -176,16 +177,16 @@ export default function ChildrenScreen() {
             </View>
             <View style={styles.cardActions}>
               <TouchableOpacity
+                style={styles.iconButton}
                 onPress={() => router.push({ pathname: '/facility-form', params: { id: String(facility.id) } })}
                 accessibilityLabel={`${facility.name}を編集`}
-                hitSlop={8}
               >
                 <Ionicons name="create-outline" size={22} color={Colors.primary} />
               </TouchableOpacity>
               <TouchableOpacity
+                style={styles.iconButton}
                 onPress={() => confirmDeleteFacility(facility)}
                 accessibilityLabel={`${facility.name}を削除`}
-                hitSlop={8}
               >
                 <Ionicons name="trash-outline" size={22} color={Colors.danger} />
               </TouchableOpacity>
@@ -203,30 +204,32 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background, padding: Spacing.md },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  sectionTitle: { fontSize: FontSize.xl, fontWeight: 'bold', color: Colors.text },
+  sectionTitle: { ...Type.title, color: Colors.text },
   emptyCard: {
     backgroundColor: Colors.surface, borderRadius: BorderRadius.md, padding: Spacing.xl,
-    alignItems: 'center', borderWidth: 1, borderColor: Colors.border, borderStyle: 'dashed',
+    alignItems: 'center', borderWidth: BorderWidth.thin, borderColor: Colors.border, borderStyle: 'dashed',
   },
-  emptyTitle: { fontSize: FontSize.md, fontWeight: '600', color: Colors.textSecondary, marginTop: Spacing.sm },
-  emptyHint: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: Spacing.xs, textAlign: 'center', lineHeight: 20 },
+  emptyTitle: { ...Type.bodyStrong, color: Colors.textSecondary, marginTop: Spacing.sm },
+  emptyHint: { ...Type.caption, color: Colors.textSecondary, marginTop: Spacing.xs, textAlign: 'center' },
   emptyButton: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.xs,
-    marginTop: Spacing.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.sm, borderWidth: 1, borderColor: Colors.primary,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.xs,
+    marginTop: Spacing.md, paddingHorizontal: Spacing.md, minHeight: TouchTarget.min,
+    borderRadius: BorderRadius.sm, borderWidth: BorderWidth.thin, borderColor: Colors.primary,
   },
-  emptyButtonText: { fontSize: FontSize.sm, color: Colors.primary, fontWeight: '600' },
+  emptyButtonText: { ...Type.captionStrong, color: Colors.primary },
   card: {
     backgroundColor: Colors.surface, borderRadius: BorderRadius.md, padding: Spacing.md,
     marginBottom: Spacing.sm, flexDirection: 'row', alignItems: 'center',
-    ...Shadows.sm,
+    ...Shadows.card,
   },
   cardIconArea: { marginRight: Spacing.sm },
   avatarCircle: {
-    width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center',
+    width: 40, height: 40, borderRadius: BorderRadius.full,
+    backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center',
   },
   cardBody: { flex: 1 },
-  cardName: { fontSize: FontSize.lg, fontWeight: '600', color: Colors.text },
-  cardDetail: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 1 },
-  cardActions: { flexDirection: 'row', gap: Spacing.md },
+  cardName: { ...Type.leadStrong, color: Colors.text },
+  cardDetail: { ...Type.caption, color: Colors.textSecondary, marginTop: 1 },
+  cardActions: { flexDirection: 'row', gap: Spacing.xs },
+  iconButton: { ...IconButton },
 });

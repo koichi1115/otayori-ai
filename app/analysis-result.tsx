@@ -6,7 +6,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Haptics from 'expo-haptics';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { File } from 'expo-file-system';
-import { Colors, Spacing, FontSize, Shadows, BorderRadius } from '../src/constants/theme';
+import { Colors, Spacing, Type, Shadows, BorderRadius, BorderWidth, TouchTarget, IconButton, hitSlopFor } from '../src/constants/theme';
 import { getDatabase } from '../src/db/database';
 import {
   toggleTodoCompleted, toggleItemCompleted,
@@ -58,13 +58,13 @@ function renderSummary(text: string) {
 }
 
 const summaryStyles = StyleSheet.create({
-  bulletRow: { flexDirection: 'row', paddingLeft: 4, marginBottom: 4 },
-  bullet: { fontSize: FontSize.md, color: Colors.primary, marginRight: 8, lineHeight: 22 },
-  bulletText: { fontSize: FontSize.md, color: Colors.text, lineHeight: 22, flex: 1 },
-  heading: { fontSize: FontSize.md, fontWeight: '700', color: Colors.text, marginTop: 8, marginBottom: 4 },
-  dateRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4, paddingLeft: 4 },
-  dateText: { fontSize: FontSize.md, color: Colors.primary, fontWeight: '500', lineHeight: 22 },
-  normalText: { fontSize: FontSize.md, color: Colors.text, lineHeight: 22, marginBottom: 4 },
+  bulletRow: { flexDirection: 'row', paddingLeft: Spacing.xs, marginBottom: Spacing.xs },
+  bullet: { ...Type.body, color: Colors.primary, marginRight: Spacing.sm },
+  bulletText: { ...Type.body, color: Colors.text, flex: 1 },
+  heading: { ...Type.bodyStrong, color: Colors.text, marginTop: Spacing.sm, marginBottom: Spacing.xs },
+  dateRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginBottom: Spacing.xs, paddingLeft: Spacing.xs },
+  dateText: { ...Type.bodyMedium, color: Colors.primary },
+  normalText: { ...Type.body, color: Colors.text, marginBottom: Spacing.xs },
 });
 
 export default function AnalysisResultScreen() {
@@ -270,28 +270,24 @@ export default function AnalysisResultScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
+          style={styles.badgeContainer}
           onPress={handleToggleCategory}
           activeOpacity={0.7}
           accessibilityLabel="カテゴリを変更"
           accessibilityRole="button"
         >
-          <View style={[
-            styles.badgeContainer,
-            doc.category === 'action_required' ? styles.badgeActionBg : styles.badgeNoticeBg,
+          <Ionicons
+            name={doc.category === 'action_required' ? 'alert-circle-outline' : 'information-circle-outline'}
+            size={14}
+            color={doc.category === 'action_required' ? Colors.primary : Colors.textSecondary}
+          />
+          <Text style={[
+            styles.badge,
+            doc.category === 'action_required' ? styles.badgeAction : styles.badgeNotice,
           ]}>
-            <Ionicons
-              name={doc.category === 'action_required' ? 'alert-circle' : 'information-circle'}
-              size={14}
-              color={doc.category === 'action_required' ? '#8B0000' : '#003366'}
-            />
-            <Text style={[
-              styles.badge,
-              doc.category === 'action_required' ? styles.badgeAction : styles.badgeNotice,
-            ]}>
-              {doc.category === 'action_required' ? '要対応' : 'お知らせ'}
-            </Text>
-            <Ionicons name="swap-horizontal" size={12} color={Colors.textSecondary} />
-          </View>
+            {doc.category === 'action_required' ? '要対応' : 'お知らせ'}
+          </Text>
+          <Ionicons name="swap-horizontal" size={12} color={Colors.textSecondary} />
         </TouchableOpacity>
         <Text style={styles.title}>{doc.title}</Text>
         <View style={styles.metaRow}>
@@ -345,7 +341,7 @@ export default function AnalysisResultScreen() {
       {events.length > 0 && (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="calendar" size={18} color={Colors.primary} />
+            <Ionicons name="calendar-outline" size={18} color={Colors.text} />
             <Text style={styles.sectionTitle}>イベント ({events.length}件)</Text>
             <View style={{ flex: 1 }} />
             {Platform.OS === 'ios' && events.some((e: any) => !e.calendar_event_id) && (
@@ -362,10 +358,10 @@ export default function AnalysisResultScreen() {
             )}
           </View>
           {events.map((e: any) => (
-            <View key={e.id} style={[styles.card, styles.eventCard]}>
+            <View key={e.id} style={styles.card}>
               <View style={styles.cardRow}>
                 <View style={styles.cardMain}>
-                  <Ionicons name="calendar" size={18} color={Colors.primary} />
+                  <Ionicons name="calendar-outline" size={18} color={Colors.textSecondary} />
                   <TouchableOpacity style={styles.cardContent} onPress={() => openEditModal('event', e)} activeOpacity={0.6}>
                     <View style={styles.cardTitleRow}>
                       <Text style={styles.cardTitle}>{e.title}</Text>
@@ -384,8 +380,8 @@ export default function AnalysisResultScreen() {
                   </TouchableOpacity>
                 </View>
                 <TouchableOpacity
+                  style={styles.iconButton}
                   onPress={() => handleDeleteEvent(e.id, e.title)}
-                  hitSlop={8}
                   accessibilityLabel={`${e.title}を削除`}
                 >
                   <Ionicons name="trash-outline" size={18} color={Colors.danger} />
@@ -394,7 +390,7 @@ export default function AnalysisResultScreen() {
               {Platform.OS === 'ios' && (
                 e.calendar_event_id ? (
                   <View style={styles.registeredChip}>
-                    <Ionicons name="checkmark-circle" size={14} color={Colors.success} />
+                    <Ionicons name="checkmark-circle-outline" size={14} color={Colors.textSecondary} />
                     <Text style={styles.registeredChipText}>カレンダーに登録済み</Text>
                   </View>
                 ) : (
@@ -424,7 +420,7 @@ export default function AnalysisResultScreen() {
       {todos.length > 0 && (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="checkbox-outline" size={18} color={Colors.warning} />
+            <Ionicons name="checkbox-outline" size={18} color={Colors.text} />
             <Text style={styles.sectionTitle}>TODO ({todos.length}件)</Text>
             <View style={{ flex: 1 }} />
             {Platform.OS === 'ios' && (todos.some((t: any) => !t.task_id) || items.some((i: any) => !i.reminder_id)) && (
@@ -441,18 +437,18 @@ export default function AnalysisResultScreen() {
             )}
           </View>
           {todos.map((t: any) => (
-            <View key={t.id} style={[styles.card, styles.todoCard]}>
+            <View key={t.id} style={styles.card}>
               <View style={styles.cardRow}>
                 <View style={styles.cardMain}>
                   <TouchableOpacity
+                    style={styles.iconButton}
                     onPress={async () => { await toggleTodoCompleted(t.id); loadData(); }}
-                    hitSlop={8}
                     accessibilityLabel={t.is_completed ? `${t.title}を未完了に戻す` : `${t.title}を完了にする`}
                   >
                     <Ionicons
-                      name={t.is_completed ? 'checkbox' : 'square-outline'}
+                      name={t.is_completed ? 'checkbox-outline' : 'square-outline'}
                       size={22}
-                      color={t.is_completed ? Colors.success : Colors.warning}
+                      color={t.is_completed ? Colors.text : Colors.textSecondary}
                     />
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.cardContent} onPress={() => openEditModal('todo', t)} activeOpacity={0.6}>
@@ -464,8 +460,8 @@ export default function AnalysisResultScreen() {
                   </TouchableOpacity>
                 </View>
                 <TouchableOpacity
+                  style={styles.iconButton}
                   onPress={() => handleDeleteTodo(t.id, t.title)}
-                  hitSlop={8}
                   accessibilityLabel={`${t.title}を削除`}
                 >
                   <Ionicons name="trash-outline" size={18} color={Colors.danger} />
@@ -474,7 +470,7 @@ export default function AnalysisResultScreen() {
               {Platform.OS === 'ios' && !t.is_completed && (
                 t.task_id ? (
                   <View style={styles.registeredChip}>
-                    <Ionicons name="checkmark-circle" size={14} color={Colors.success} />
+                    <Ionicons name="checkmark-circle-outline" size={14} color={Colors.textSecondary} />
                     <Text style={styles.registeredChipText}>リマインダーに登録済み</Text>
                   </View>
                 ) : (
@@ -504,22 +500,22 @@ export default function AnalysisResultScreen() {
       {items.length > 0 && (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="bag-handle-outline" size={18} color={Colors.success} />
+            <Ionicons name="bag-handle-outline" size={18} color={Colors.text} />
             <Text style={styles.sectionTitle}>持ち物 ({items.length}件)</Text>
           </View>
           {items.map((i: any) => (
-            <View key={i.id} style={[styles.card, styles.itemCard]}>
+            <View key={i.id} style={styles.card}>
               <View style={styles.cardRow}>
                 <View style={styles.cardMain}>
                   <TouchableOpacity
+                    style={styles.iconButton}
                     onPress={async () => { await toggleItemCompleted(i.id); loadData(); }}
-                    hitSlop={8}
                     accessibilityLabel={i.is_completed ? `${i.name}を未完了に戻す` : `${i.name}を完了にする`}
                   >
                     <Ionicons
-                      name={i.is_completed ? 'checkbox' : 'square-outline'}
+                      name={i.is_completed ? 'checkbox-outline' : 'square-outline'}
                       size={22}
-                      color={i.is_completed ? Colors.success : Colors.success}
+                      color={i.is_completed ? Colors.text : Colors.textSecondary}
                     />
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.cardContent} onPress={() => openEditModal('item', i)} activeOpacity={0.6}>
@@ -531,8 +527,8 @@ export default function AnalysisResultScreen() {
                   </TouchableOpacity>
                 </View>
                 <TouchableOpacity
+                  style={styles.iconButton}
                   onPress={() => handleDeleteItem(i.id, i.name)}
-                  hitSlop={8}
                   accessibilityLabel={`${i.name}を削除`}
                 >
                   <Ionicons name="trash-outline" size={18} color={Colors.danger} />
@@ -541,7 +537,7 @@ export default function AnalysisResultScreen() {
               {Platform.OS === 'ios' && !i.is_completed && (
                 i.reminder_id ? (
                   <View style={styles.registeredChip}>
-                    <Ionicons name="checkmark-circle" size={14} color={Colors.success} />
+                    <Ionicons name="checkmark-circle-outline" size={14} color={Colors.textSecondary} />
                     <Text style={styles.registeredChipText}>リマインダーに登録済み</Text>
                   </View>
                 ) : (
@@ -591,7 +587,7 @@ export default function AnalysisResultScreen() {
               <Text style={styles.modalTitle}>
                 {editModal?.type === 'todo' ? 'TODO編集' : editModal?.type === 'item' ? '持ち物編集' : 'イベント編集'}
               </Text>
-              <TouchableOpacity onPress={() => setEditModal(null)} hitSlop={8}>
+              <TouchableOpacity onPress={() => setEditModal(null)} hitSlop={hitSlopFor(24, 24)}>
                 <Ionicons name="close" size={24} color={Colors.textSecondary} />
               </TouchableOpacity>
             </View>
@@ -615,7 +611,7 @@ export default function AnalysisResultScreen() {
               onPress={() => setShowDatePicker(true)}
               activeOpacity={0.7}
             >
-              <Text style={{ fontSize: FontSize.md, color: editModal?.dueDate ? Colors.text : Colors.textSecondary }}>
+              <Text style={editModal?.dueDate ? styles.modalValue : styles.modalPlaceholder}>
                 {editModal?.dueDate || '日付を選択'}
               </Text>
             </TouchableOpacity>
@@ -649,7 +645,7 @@ export default function AnalysisResultScreen() {
             />
 
             <TouchableOpacity style={styles.modalSaveButton} onPress={saveEdit} activeOpacity={0.7}>
-              <Ionicons name="checkmark" size={20} color="#fff" />
+              <Ionicons name="checkmark" size={20} color={Colors.onPrimary} />
               <Text style={styles.modalSaveText}>保存</Text>
             </TouchableOpacity>
           </View>
@@ -662,122 +658,112 @@ export default function AnalysisResultScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background },
-  loadingText: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: Spacing.sm },
+  loadingText: { ...Type.caption, color: Colors.textSecondary, marginTop: Spacing.sm },
   header: {
     padding: Spacing.lg, backgroundColor: Colors.surface,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
+    borderBottomWidth: BorderWidth.thin, borderBottomColor: Colors.border,
   },
   badgeContainer: {
     flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start',
-    gap: Spacing.xs, paddingHorizontal: 8, paddingVertical: 4,
-    borderRadius: BorderRadius.sm, marginBottom: Spacing.sm,
+    gap: Spacing.xs, minHeight: TouchTarget.min,
+    marginBottom: Spacing.sm,
   },
-  badgeActionBg: { backgroundColor: Colors.actionRequired },
-  badgeNoticeBg: { backgroundColor: Colors.notice },
-  badge: { fontSize: FontSize.sm, fontWeight: '600' },
-  badgeAction: { color: '#8B0000' },
-  badgeNotice: { color: '#003366' },
-  title: { fontSize: FontSize.xl, fontWeight: 'bold', color: Colors.text, marginBottom: Spacing.sm },
+  badge: { ...Type.captionStrong },
+  badgeAction: { color: Colors.primary },
+  badgeNotice: { color: Colors.textSecondary },
+  title: { ...Type.title, color: Colors.text, marginBottom: Spacing.sm },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginTop: 2 },
-  meta: { fontSize: FontSize.sm, color: Colors.textSecondary },
+  meta: { ...Type.caption, color: Colors.textSecondary },
   section: { padding: Spacing.md },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
-  sectionTitle: { fontSize: FontSize.lg, fontWeight: '600', color: Colors.text },
+  sectionTitle: { ...Type.sectionTitle, color: Colors.text },
   summaryCard: {
     backgroundColor: Colors.surface, borderRadius: BorderRadius.md, padding: Spacing.md,
-    ...Shadows.sm,
+    ...Shadows.card,
   },
   card: {
     backgroundColor: Colors.surface, borderRadius: BorderRadius.md, padding: Spacing.md,
     marginBottom: Spacing.sm,
-    ...Shadows.sm,
+    ...Shadows.card,
   },
   cardRow: {
     flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between',
   },
   cardMain: { flex: 1, flexDirection: 'row', gap: Spacing.sm, alignItems: 'flex-start' },
+  iconButton: { ...IconButton },
   bulkButton: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: Spacing.sm, paddingVertical: 4,
-    borderRadius: BorderRadius.sm, borderWidth: 1, borderColor: Colors.primary,
-    backgroundColor: Colors.primaryLight,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.xs,
+    paddingHorizontal: Spacing.sm, minHeight: TouchTarget.min,
+    borderRadius: BorderRadius.sm, borderWidth: BorderWidth.thin, borderColor: Colors.primary,
+    backgroundColor: Colors.transparent,
   },
-  bulkButtonText: { fontSize: FontSize.xs, color: Colors.primary, fontWeight: '600' },
+  bulkButtonText: { ...Type.captionStrong, color: Colors.primary },
   registerChip: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.xs,
     alignSelf: 'flex-start',
-    marginTop: Spacing.sm, paddingHorizontal: Spacing.sm, paddingVertical: 5,
-    borderRadius: BorderRadius.sm, borderWidth: 1, borderColor: Colors.primary,
+    marginTop: Spacing.sm, paddingHorizontal: Spacing.sm, minHeight: TouchTarget.min,
+    borderRadius: BorderRadius.sm, borderWidth: BorderWidth.thin, borderColor: Colors.primary,
     backgroundColor: Colors.surface,
   },
-  registerChipText: { fontSize: FontSize.xs, color: Colors.primary, fontWeight: '600' },
+  registerChipText: { ...Type.captionStrong, color: Colors.primary },
   registeredChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.xs,
     alignSelf: 'flex-start', marginTop: Spacing.sm,
-    paddingHorizontal: Spacing.sm, paddingVertical: 5,
+    paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs,
   },
-  registeredChipText: { fontSize: FontSize.xs, color: Colors.success, fontWeight: '600' },
-  eventCard: { borderLeftWidth: 3, borderLeftColor: Colors.primary },
-  todoCard: { borderLeftWidth: 3, borderLeftColor: Colors.warning },
-  itemCard: { borderLeftWidth: 3, borderLeftColor: Colors.success },
-  cardContent: { flex: 1 },
+  registeredChipText: { ...Type.captionStrong, color: Colors.textSecondary },
+  cardContent: { flex: 1, minHeight: TouchTarget.min },
   cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
-  cardTitle: { fontSize: FontSize.md, fontWeight: '500', color: Colors.text, flex: 1 },
+  cardTitle: { ...Type.bodyMedium, color: Colors.text, flex: 1 },
   completedText: { textDecorationLine: 'line-through', color: Colors.textSecondary },
-  cardMeta: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 1 },
-  cardDesc: { fontSize: FontSize.sm, color: Colors.text, marginTop: Spacing.xs, lineHeight: 20 },
+  cardMeta: { ...Type.caption, color: Colors.textSecondary, marginTop: 1 },
+  cardDesc: { ...Type.caption, color: Colors.text, marginTop: Spacing.xs },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 1 },
-  registeredBadge: { marginLeft: Spacing.xs },
-  summaryText: { fontSize: FontSize.md, color: Colors.text, lineHeight: 24 },
   emptyState: {
     alignItems: 'center', paddingVertical: Spacing.xl,
     backgroundColor: Colors.surface, borderRadius: BorderRadius.md,
-    ...Shadows.sm,
+    ...Shadows.card,
   },
-  emptyTitle: { fontSize: FontSize.md, fontWeight: '600', color: Colors.textSecondary, marginTop: Spacing.sm },
-  emptyText: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: Spacing.xs, textAlign: 'center' },
-  registerButton: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: Colors.primary, borderRadius: BorderRadius.md, padding: Spacing.md,
-    gap: Spacing.sm,
-    ...Shadows.md,
-  },
-  registerButtonDisabled: { backgroundColor: Colors.textSecondary },
-  registerButtonText: { color: '#fff', fontSize: FontSize.md, fontWeight: '600' },
+  emptyTitle: { ...Type.bodyStrong, color: Colors.textSecondary, marginTop: Spacing.sm },
+  emptyText: { ...Type.caption, color: Colors.textSecondary, marginTop: Spacing.xs, textAlign: 'center' },
   sourceLinks: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.md },
   sourceLinkButton: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.xs,
-    paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.sm, borderWidth: 1, borderColor: Colors.primary,
-    backgroundColor: Colors.primaryLight,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.xs,
+    paddingHorizontal: Spacing.sm, minHeight: TouchTarget.min,
+    borderRadius: BorderRadius.sm, borderWidth: BorderWidth.thin, borderColor: Colors.primary,
+    backgroundColor: Colors.transparent,
   },
-  sourceLinkText: { fontSize: FontSize.sm, color: Colors.primary, fontWeight: '500' },
+  sourceLinkText: { ...Type.captionMedium, color: Colors.primary },
   modalOverlay: {
-    flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)',
+    flex: 1, justifyContent: 'flex-end', backgroundColor: Colors.scrim,
   },
   modalContent: {
-    backgroundColor: Colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    padding: Spacing.lg, paddingBottom: 40,
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: BorderRadius.lg, borderTopRightRadius: BorderRadius.lg,
+    padding: Spacing.lg, paddingBottom: Spacing.xl,
   },
   modalHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     marginBottom: Spacing.lg,
   },
-  modalTitle: { fontSize: FontSize.lg, fontWeight: 'bold', color: Colors.text },
+  modalTitle: { ...Type.sectionTitle, color: Colors.text },
   modalLabel: {
-    fontSize: FontSize.sm, fontWeight: '500', color: Colors.textSecondary,
+    ...Type.captionMedium, color: Colors.textSecondary,
     marginTop: Spacing.sm, marginBottom: Spacing.xs,
   },
   modalInput: {
-    borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.sm,
-    padding: Spacing.sm, fontSize: FontSize.md, color: Colors.text,
+    borderWidth: BorderWidth.thin, borderColor: Colors.border, borderRadius: BorderRadius.sm,
+    padding: Spacing.sm, minHeight: TouchTarget.min, justifyContent: 'center',
+    ...Type.body, color: Colors.text,
     backgroundColor: Colors.background,
   },
+  modalValue: { ...Type.body, color: Colors.text },
+  modalPlaceholder: { ...Type.body, color: Colors.textSecondary },
   modalTextArea: { minHeight: 80, textAlignVertical: 'top' },
   modalSaveButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     backgroundColor: Colors.primary, borderRadius: BorderRadius.sm, padding: Spacing.md,
-    marginTop: Spacing.lg, gap: Spacing.sm,
+    marginTop: Spacing.lg, gap: Spacing.sm, minHeight: TouchTarget.min,
   },
-  modalSaveText: { color: '#fff', fontSize: FontSize.md, fontWeight: '600' },
+  modalSaveText: { ...Type.bodyStrong, color: Colors.onPrimary },
 });

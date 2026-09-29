@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Image } from 'react-native';
 import { useFocusEffect, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, FontSize, Shadows, BorderRadius } from '../../src/constants/theme';
+import { Colors, Spacing, Type, Shadows, BorderRadius, TouchTarget, appIconRadius, hitSlopFor } from '../../src/constants/theme';
 import { getDatabase } from '../../src/db/database';
 import { toggleTodoCompleted, toggleItemCompleted } from '../../src/db/documents';
 
@@ -125,7 +125,7 @@ export default function HomeScreen() {
         accessibilityLabel="プリントをスキャン"
         accessibilityRole="button"
       >
-        <Ionicons name="camera" size={24} color="#fff" />
+        <Ionicons name="camera-outline" size={24} color={Colors.onPrimary} />
         <Text style={styles.scanButtonText}>プリントをスキャン</Text>
       </TouchableOpacity>
 
@@ -158,10 +158,12 @@ export default function HomeScreen() {
                     {date === '期限なし' ? '期限なし' : date}
                   </Text>
                 </View>
-                {items.map((item) => (
+                {items.map((item) => {
+                  const isItem = item.type === 'item';
+                  return (
                   <TouchableOpacity
                     key={`${item.type}-${item.id}`}
-                    style={[styles.card, item.type === 'item' ? styles.itemCard : styles.todoCard]}
+                    style={styles.card}
                     onPress={() => router.push({ pathname: '/analysis-result', params: { docId: String(item.documentId) } })}
                     activeOpacity={0.6}
                     accessibilityLabel={`${item.title}の詳細を表示`}
@@ -173,12 +175,12 @@ export default function HomeScreen() {
                         else await toggleItemCompleted(item.id);
                         loadData();
                       }}
-                      hitSlop={8}
+                      hitSlop={hitSlopFor(22, 22)}
                     >
                       <Ionicons
-                        name={item.type === 'item' ? 'bag-handle-outline' : 'square-outline'}
+                        name={isItem ? 'bag-handle-outline' : 'square-outline'}
                         size={22}
-                        color={item.type === 'item' ? Colors.success : Colors.warning}
+                        color={Colors.textSecondary}
                       />
                     </TouchableOpacity>
                     <View style={styles.cardContent}>
@@ -189,7 +191,8 @@ export default function HomeScreen() {
                     </View>
                     <Ionicons name="chevron-forward" size={16} color={Colors.border} />
                   </TouchableOpacity>
-                ))}
+                  );
+                })}
               </View>
             ));
           })()
@@ -210,8 +213,8 @@ export default function HomeScreen() {
           </View>
         ) : (
           data.upcomingEvents.map((event) => (
-            <View key={event.id} style={[styles.card, styles.eventCard]}>
-              <Ionicons name="calendar" size={18} color={Colors.primary} />
+            <View key={event.id} style={styles.card}>
+              <Ionicons name="calendar-outline" size={18} color={Colors.textSecondary} />
               <View style={styles.cardContent}>
                 <Text style={styles.cardTitle}>{event.title}</Text>
                 <Text style={styles.cardMeta}>
@@ -245,9 +248,9 @@ export default function HomeScreen() {
               accessibilityLabel={`${doc.title}の詳細を表示`}
             >
               <Ionicons
-                name={doc.category === 'action_required' ? 'alert-circle' : 'information-circle'}
+                name={doc.category === 'action_required' ? 'alert-circle-outline' : 'information-circle-outline'}
                 size={20}
-                color={doc.category === 'action_required' ? '#8B0000' : '#003366'}
+                color={doc.category === 'action_required' ? Colors.primary : Colors.textSecondary}
               />
               <View style={styles.cardContent}>
                 <View style={styles.cardRow}>
@@ -276,49 +279,43 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background },
   header: { padding: Spacing.lg, paddingTop: Spacing.xl, backgroundColor: Colors.primary },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  headerIcon: { width: 56, height: 56, borderRadius: 14, backgroundColor: '#fff' },
-  headerTitle: { fontSize: FontSize.xxl, fontWeight: 'bold', color: '#fff' },
-  headerTagline: { fontSize: FontSize.sm, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
-  headerSubtitle: { fontSize: FontSize.sm, color: 'rgba(255,255,255,0.7)', marginTop: Spacing.sm },
+  headerIcon: { width: 56, height: 56, borderRadius: appIconRadius(56), backgroundColor: Colors.surface },
+  headerTitle: { ...Type.display, color: Colors.onPrimary },
+  headerTagline: { ...Type.caption, color: Colors.onPrimary, marginTop: 2 },
+  headerSubtitle: { ...Type.caption, color: Colors.onPrimary, marginTop: Spacing.sm },
   scanButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: Colors.secondary, margin: Spacing.md, padding: Spacing.md,
-    borderRadius: BorderRadius.md, gap: Spacing.sm,
-    ...Shadows.md,
+    backgroundColor: Colors.primary, margin: Spacing.md, padding: Spacing.md,
+    borderRadius: BorderRadius.md, gap: Spacing.sm, minHeight: TouchTarget.min,
+    ...Shadows.raised,
   },
-  scanButtonText: { color: '#fff', fontSize: FontSize.lg, fontWeight: '600' },
+  scanButtonText: { ...Type.leadStrong, color: Colors.onPrimary },
   section: { paddingHorizontal: Spacing.md, marginTop: Spacing.lg },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
-  sectionTitle: { fontSize: FontSize.lg, fontWeight: '600', color: Colors.text },
+  sectionTitle: { ...Type.sectionTitle, color: Colors.text },
   emptyState: {
     alignItems: 'center', paddingVertical: Spacing.xl,
     backgroundColor: Colors.surface, borderRadius: BorderRadius.md,
-    ...Shadows.sm,
+    ...Shadows.card,
   },
-  emptyTitle: { fontSize: FontSize.md, fontWeight: '600', color: Colors.textSecondary, marginTop: Spacing.sm },
-  emptyText: { color: Colors.textSecondary, fontSize: FontSize.sm, marginTop: Spacing.xs },
+  emptyTitle: { ...Type.bodyStrong, color: Colors.textSecondary, marginTop: Spacing.sm },
+  emptyText: { ...Type.caption, color: Colors.textSecondary, marginTop: Spacing.xs },
   card: {
     backgroundColor: Colors.surface, borderRadius: BorderRadius.md, padding: Spacing.md,
-    marginBottom: Spacing.sm, borderLeftWidth: 4, borderLeftColor: Colors.border,
+    marginBottom: Spacing.sm, minHeight: TouchTarget.min,
     flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
-    ...Shadows.sm,
+    ...Shadows.card,
   },
-  todoCard: { borderLeftColor: Colors.warning },
-  itemCard: { borderLeftColor: Colors.success },
-  eventCard: { borderLeftColor: Colors.primary },
   cardContent: { flex: 1 },
   cardRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  cardTitle: { fontSize: FontSize.md, fontWeight: '500', color: Colors.text, flex: 1 },
-  cardMeta: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 2 },
-  badge: {
-    fontSize: FontSize.xs, fontWeight: '600', paddingHorizontal: 6, paddingVertical: 2,
-    borderRadius: 4, overflow: 'hidden',
-  },
-  badgeAction: { backgroundColor: Colors.actionRequired, color: '#8B0000' },
-  badgeNotice: { backgroundColor: Colors.notice, color: '#003366' },
+  cardTitle: { ...Type.bodyMedium, color: Colors.text, flex: 1 },
+  cardMeta: { ...Type.caption, color: Colors.textSecondary, marginTop: 2 },
+  badge: { ...Type.captionStrong },
+  badgeAction: { color: Colors.primary },
+  badgeNotice: { color: Colors.textSecondary },
   dateGroup: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.xs,
     marginTop: Spacing.sm, marginBottom: Spacing.xs, paddingLeft: Spacing.xs,
   },
-  dateGroupText: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.textSecondary },
+  dateGroupText: { ...Type.captionStrong, color: Colors.textSecondary },
 });

@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Haptics from 'expo-haptics';
-import { Colors, Spacing, FontSize, Shadows, BorderRadius } from '../src/constants/theme';
+import { Colors, Spacing, Type, Shadows, BorderRadius, BorderWidth, TouchTarget, appIconRadius } from '../src/constants/theme';
 import { setSetting } from '../src/db/settings';
 
 /**
@@ -85,12 +85,12 @@ export default function OnboardingScreen() {
           accessibilityLabel="今すぐ始める"
           accessibilityRole="button"
         >
-          <Ionicons name="rocket-outline" size={22} color="#fff" />
+          <Ionicons name="rocket-outline" size={22} color={Colors.onPrimary} />
           <View style={styles.optionTextWrap}>
             <Text style={styles.primaryOptionTitle}>今すぐ始める</Text>
             <Text style={styles.primaryOptionDesc}>登録不要。データはこの端末に保存されます</Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.8)" />
+          <Ionicons name="chevron-forward" size={18} color={Colors.onPrimary} />
         </TouchableOpacity>
 
         {/* Apple公式サインインボタン（HIG準拠） */}
@@ -127,39 +127,40 @@ const styles = StyleSheet.create({
   },
   hero: { alignItems: 'center' },
   mascot: {
-    width: 140, height: 140, borderRadius: 32,
-    ...Shadows.lg,
+    width: 140, height: 140, borderRadius: appIconRadius(140),
+    ...Shadows.raised,
   },
   title: {
-    fontSize: FontSize.xxl, fontWeight: 'bold', color: Colors.text,
+    ...Type.display, color: Colors.text,
     marginTop: Spacing.lg,
   },
   subtitle: {
-    fontSize: FontSize.md, color: Colors.textSecondary, textAlign: 'center',
-    lineHeight: 22, marginTop: Spacing.sm,
+    ...Type.body, color: Colors.textSecondary, textAlign: 'center',
+    marginTop: Spacing.sm,
   },
   options: { flex: 1, justifyContent: 'center' },
   primaryOption: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
     backgroundColor: Colors.primary, borderRadius: BorderRadius.lg,
-    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md + 2,
-    ...Shadows.md,
+    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md,
+    minHeight: TouchTarget.min,
+    ...Shadows.raised,
   },
   optionTextWrap: { flex: 1 },
-  primaryOptionTitle: { color: '#fff', fontSize: FontSize.lg, fontWeight: '700' },
-  primaryOptionDesc: { color: 'rgba(255,255,255,0.85)', fontSize: FontSize.xs, marginTop: 2 },
+  primaryOptionTitle: { ...Type.leadStrong, color: Colors.onPrimary },
+  primaryOptionDesc: { ...Type.caption, color: Colors.onPrimary, marginTop: 2 },
   dividerRow: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
     marginVertical: Spacing.lg,
   },
-  divider: { flex: 1, height: 1, backgroundColor: Colors.border },
-  dividerText: { fontSize: FontSize.sm, color: Colors.textSecondary },
-  appleButton: { width: '100%', height: 50 },
+  divider: { flex: 1, height: BorderWidth.thin, backgroundColor: Colors.border },
+  dividerText: { ...Type.caption, color: Colors.textSecondary },
+  appleButton: { width: '100%', height: TouchTarget.min },
   appleHint: {
-    fontSize: FontSize.xs, color: Colors.textSecondary, textAlign: 'center',
-    marginTop: Spacing.sm, lineHeight: 16,
+    ...Type.caption, color: Colors.textSecondary, textAlign: 'center',
+    marginTop: Spacing.sm,
   },
   footnote: {
-    fontSize: FontSize.sm, color: Colors.textSecondary, textAlign: 'center',
+    ...Type.caption, color: Colors.textSecondary, textAlign: 'center',
   },
 });
