@@ -1,14 +1,15 @@
 import { getDatabase } from './database';
 import type { AppSettings, LLMProvider } from '../types';
+import { DEFAULT_CLAUDE_MODEL, DEFAULT_GEMINI_MODEL, DEFAULT_OPENAI_MODEL } from '../constants/llm';
 
 const DEFAULTS: AppSettings = {
   llmProvider: 'claude',
   claudeApiKey: '',
   geminiApiKey: '',
   openaiApiKey: '',
-  claudeModel: 'claude-haiku-4-5-20251001',
-  geminiModel: 'gemini-2.5-flash',
-  openaiModel: 'gpt-4o-mini',
+  claudeModel: DEFAULT_CLAUDE_MODEL,
+  geminiModel: DEFAULT_GEMINI_MODEL,
+  openaiModel: DEFAULT_OPENAI_MODEL,
   googleAccessToken: null,
   driveFolderId: null,
   calendarId: null,

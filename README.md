@@ -33,7 +33,7 @@
 | 機能 | 説明 |
 |------|------|
 | AI自動解析 | PDF/画像を取り込むだけで、イベント・TODO・持ち物を自動抽出・分類 |
-| マルチAIモデル | Claude / Gemini / OpenAI の3モデルから選択可能 |
+| AIモデル切替 | 設定画面で Claude（Sonnet 5.5 標準 / Opus 5.5 / Haiku 4.5）を選択。詳細は [docs/LLM_MODELS.md](docs/LLM_MODELS.md) |
 | Googleカレンダー連携 | イベントをワンタップでカレンダー登録（元資料リンク付き） |
 | Googleタスク連携 | TODO・持ち物をタスクとして自動登録 |
 | Google Drive同期 | 指定フォルダの新規ファイルを自動検出・解析 |

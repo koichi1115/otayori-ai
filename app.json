@@ -50,7 +50,6 @@
     },
     "extra": {
       "claudeApiKey": "${CLAUDE_API_KEY}",
-      "claudeModel": "claude-haiku-4-5-20251001",
       "googleOAuthClientId": "539790701575-bhu998if0q5shkbg64c06ukbt4c9m0pk.apps.googleusercontent.com",
       "router": {},
       "eas": {

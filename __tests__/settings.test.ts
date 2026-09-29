@@ -2,6 +2,7 @@ jest.mock('../src/db/database', () => ({
   getDatabase: jest.fn(),
 }));
 
+import { DEFAULT_CLAUDE_MODEL, DEFAULT_GEMINI_MODEL } from '../src/constants/llm';
 import { getSetting, setSetting, getAllSettings, getLLMConfig } from '../src/db/settings';
 import { getDatabase } from '../src/db/database';
 
@@ -48,7 +49,7 @@ describe('getAllSettings', () => {
     expect(settings.llmProvider).toBe('gemini');
     expect(settings.geminiApiKey).toBe('gemini-key-123');
     // Defaults should still be present
-    expect(settings.claudeModel).toBe('claude-haiku-4-5-20251001');
+    expect(settings.claudeModel).toBe(DEFAULT_CLAUDE_MODEL);
   });
 
   it('returns all defaults when nothing stored', async () => {
@@ -68,7 +69,7 @@ describe('getLLMConfig', () => {
     const config = await getLLMConfig();
     expect(config.provider).toBe('claude');
     expect(config.apiKey).toBe('sk-test');
-    expect(config.model).toBe('claude-haiku-4-5-20251001');
+    expect(config.model).toBe(DEFAULT_CLAUDE_MODEL);
   });
 
   it('returns gemini config when provider is gemini', async () => {
@@ -79,7 +80,7 @@ describe('getLLMConfig', () => {
     const config = await getLLMConfig();
     expect(config.provider).toBe('gemini');
     expect(config.apiKey).toBe('gemini-key');
-    expect(config.model).toBe('gemini-2.5-flash');
+    expect(config.model).toBe(DEFAULT_GEMINI_MODEL);
   });
 
   it('returns openai config when provider is openai', async () => {
