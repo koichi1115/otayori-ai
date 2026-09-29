@@ -4,7 +4,7 @@ import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Haptics from 'expo-haptics';
-import { Colors, Spacing, FontSize, Shadows, BorderRadius } from '../../src/constants/theme';
+import { Colors, Spacing, Type, Shadows, BorderRadius, BorderWidth, TouchTarget } from '../../src/constants/theme';
 import { getAllSettings, setSetting } from '../../src/db/settings';
 import type { AppSettings } from '../../src/types';
 import { ModelPicker } from '../../src/components/ModelPicker';
@@ -195,7 +195,7 @@ export default function SettingsScreen() {
               accessibilityLabel="LINE公式アカウントを友だち追加"
               accessibilityRole="button"
             >
-              <Ionicons name="chatbubble" size={18} color="#fff" />
+              <Ionicons name="chatbubble-outline" size={18} color={Colors.onPrimary} />
               <Text style={styles.buttonText}>友だち追加</Text>
             </TouchableOpacity>
 
@@ -260,54 +260,50 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
     marginTop: Spacing.lg, marginBottom: Spacing.sm,
   },
-  sectionTitle: { fontSize: FontSize.lg, fontWeight: '600', color: Colors.text },
+  sectionTitle: { ...Type.sectionTitle, color: Colors.text },
   card: {
     backgroundColor: Colors.surface, borderRadius: BorderRadius.md, padding: Spacing.md,
     marginBottom: Spacing.sm,
-    ...Shadows.sm,
+    ...Shadows.card,
   },
-  label: { fontSize: FontSize.sm, fontWeight: '500', color: Colors.textSecondary, marginTop: Spacing.sm, marginBottom: Spacing.xs },
+  label: { ...Type.captionMedium, color: Colors.textSecondary, marginTop: Spacing.sm, marginBottom: Spacing.xs },
   input: {
-    borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.sm, padding: Spacing.sm,
-    fontSize: FontSize.md, backgroundColor: Colors.background, color: Colors.text,
+    borderWidth: BorderWidth.thin, borderColor: Colors.border, borderRadius: BorderRadius.sm, padding: Spacing.sm,
+    minHeight: TouchTarget.min,
+    ...Type.body, backgroundColor: Colors.background, color: Colors.text,
   },
-  button: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: Colors.primary, borderRadius: BorderRadius.sm, padding: Spacing.md,
-    marginTop: Spacing.md, gap: Spacing.sm,
-    ...Shadows.sm,
-  },
-  buttonText: { color: '#fff', fontSize: FontSize.md, fontWeight: '600' },
+  buttonText: { ...Type.bodyStrong, color: Colors.onPrimary },
   dangerButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.xs,
-    backgroundColor: 'transparent', borderRadius: BorderRadius.sm, padding: Spacing.sm,
-    marginTop: Spacing.md, borderWidth: 1, borderColor: Colors.danger,
+    backgroundColor: Colors.transparent, borderRadius: BorderRadius.sm, paddingHorizontal: Spacing.sm,
+    minHeight: TouchTarget.min,
+    marginTop: Spacing.md, borderWidth: BorderWidth.thin, borderColor: Colors.danger,
   },
-  dangerButtonText: { color: Colors.danger, fontSize: FontSize.sm, fontWeight: '500' },
+  dangerButtonText: { ...Type.captionMedium, color: Colors.danger },
   connectedRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  statusDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: Colors.success },
-  connectedText: { fontSize: FontSize.md, fontWeight: '600', color: Colors.success },
-  modeText: { fontSize: FontSize.md, fontWeight: '600', color: Colors.text },
-  appleButton: { width: '100%', height: 44, marginTop: Spacing.md },
-  descText: { fontSize: FontSize.sm, color: Colors.textSecondary, lineHeight: 20, marginBottom: Spacing.sm },
-  hint: { fontSize: FontSize.xs, color: Colors.textSecondary, marginTop: Spacing.xs, lineHeight: 16 },
+  statusDot: { width: 10, height: 10, borderRadius: BorderRadius.full, backgroundColor: Colors.statusDot },
+  connectedText: { ...Type.bodyStrong, color: Colors.text },
+  modeText: { ...Type.bodyStrong, color: Colors.text },
+  appleButton: { width: '100%', height: TouchTarget.min, marginTop: Spacing.md },
+  descText: { ...Type.caption, color: Colors.textSecondary, marginBottom: Spacing.sm },
+  hint: { ...Type.caption, color: Colors.textSecondary, marginTop: Spacing.xs },
   lineButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#06C755', borderRadius: BorderRadius.sm, padding: Spacing.md,
-    gap: Spacing.sm,
-    ...Shadows.sm,
+    backgroundColor: Colors.primary, borderRadius: BorderRadius.sm, padding: Spacing.md,
+    gap: Spacing.sm, minHeight: TouchTarget.min,
+    ...Shadows.card,
   },
   reminderOptions: {
     flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginTop: Spacing.xs,
   },
   reminderChip: {
-    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.sm, borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: Spacing.md, justifyContent: 'center', minHeight: TouchTarget.min,
+    borderRadius: BorderRadius.sm, borderWidth: BorderWidth.thin, borderColor: Colors.border,
     backgroundColor: Colors.background,
   },
   reminderChipActive: {
     backgroundColor: Colors.primary, borderColor: Colors.primary,
   },
-  reminderChipText: { fontSize: FontSize.md, color: Colors.text, fontWeight: '500' },
-  reminderChipTextActive: { color: '#fff' },
+  reminderChipText: { ...Type.bodyMedium, color: Colors.text },
+  reminderChipTextActive: { color: Colors.onPrimary },
 });
