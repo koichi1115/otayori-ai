@@ -1,5 +1,5 @@
 /**
- * 画面（app/ と App.tsx）に見た目の直値・禁止パターンが残らないことを検査する。
+ * 画面（app/、App.tsx、src/components）に見た目の直値・禁止パターンが残らないことを検査する。
  * テーマ値は src/constants/theme.ts に集約する（関心の分離）。
  */
 import * as fs from 'fs';
@@ -15,7 +15,12 @@ function listFiles(dir: string): string[] {
   });
 }
 
-const screenFiles = [...listFiles(path.join(ROOT, 'app')), path.join(ROOT, 'App.tsx')];
+// 画面(app/, App.tsx)に加え、画面から使う共通コンポーネント(src/components)も同じ規約に従わせる
+const screenFiles = [
+  ...listFiles(path.join(ROOT, 'app')),
+  ...listFiles(path.join(ROOT, 'src/components')),
+  path.join(ROOT, 'App.tsx'),
+];
 const rel = (f: string) => path.relative(ROOT, f);
 const read = (f: string) => fs.readFileSync(f, 'utf8');
 

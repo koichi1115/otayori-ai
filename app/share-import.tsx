@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
-import { Colors, Spacing, FontSize, Shadows, BorderRadius } from '../src/constants/theme';
+import { Colors, Spacing, Type, Shadows, BorderRadius, TouchTarget } from '../src/constants/theme';
 import { useShareIntentValue } from '../src/share/share-intent-source';
 import { pickSource } from '../src/share/shared-payload';
 import { useShareImportFlow } from '../src/share/use-share-import-flow';
@@ -46,7 +46,7 @@ export default function ShareImportScreen() {
         <Ionicons name="alert-circle-outline" size={40} color={Colors.danger} />
         <Text style={styles.message} accessibilityRole="alert">{failureMessage(state.reason)}</Text>
         <TouchableOpacity style={styles.primary} onPress={leave(showCamera)} accessibilityRole="button" accessibilityLabel="写真で撮って読み込む">
-          <Ionicons name="camera" size={20} color={Colors.surface} />
+          <Ionicons name="camera-outline" size={20} color={Colors.onPrimary} />
           <Text style={styles.primaryText}>写真で撮って読み込む</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.secondary} onPress={leave(showHome)} accessibilityRole="button" accessibilityLabel="ホームへ戻る">
@@ -59,14 +59,14 @@ export default function ShareImportScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background, padding: Spacing.lg },
-  card: { backgroundColor: Colors.surface, borderRadius: BorderRadius.lg, padding: Spacing.xl, alignItems: 'center', width: '100%', ...Shadows.md },
-  title: { fontSize: FontSize.lg, fontWeight: '600', color: Colors.text, marginTop: Spacing.lg },
-  detail: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: Spacing.sm, textAlign: 'center' },
+  card: { backgroundColor: Colors.surface, borderRadius: BorderRadius.lg, padding: Spacing.xl, alignItems: 'center', width: '100%', ...Shadows.card },
+  title: { ...Type.leadStrong, color: Colors.text, marginTop: Spacing.lg },
+  detail: { ...Type.caption, color: Colors.textSecondary, marginTop: Spacing.sm, textAlign: 'center' },
   track: { height: Spacing.sm, width: '100%', backgroundColor: Colors.border, borderRadius: BorderRadius.full, marginTop: Spacing.md, overflow: 'hidden' },
   bar: { height: '100%', backgroundColor: Colors.primary, borderRadius: BorderRadius.full },
-  message: { fontSize: FontSize.md, color: Colors.text, marginTop: Spacing.md, marginBottom: Spacing.lg, textAlign: 'center', lineHeight: 22 },
-  primary: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, backgroundColor: Colors.primary, borderRadius: BorderRadius.md, paddingVertical: Spacing.md, paddingHorizontal: Spacing.lg, width: '100%' },
-  primaryText: { fontSize: FontSize.lg, fontWeight: '600', color: Colors.surface },
-  secondary: { marginTop: Spacing.md, padding: Spacing.sm },
-  secondaryText: { fontSize: FontSize.md, color: Colors.textSecondary },
+  message: { ...Type.body, color: Colors.text, marginTop: Spacing.md, marginBottom: Spacing.lg, textAlign: 'center' },
+  primary: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, backgroundColor: Colors.primary, borderRadius: BorderRadius.md, minHeight: TouchTarget.min, paddingHorizontal: Spacing.lg, width: '100%' },
+  primaryText: { ...Type.leadStrong, color: Colors.onPrimary },
+  secondary: { marginTop: Spacing.md, minHeight: TouchTarget.min, paddingHorizontal: Spacing.md, justifyContent: 'center' },
+  secondaryText: { ...Type.body, color: Colors.textSecondary },
 });

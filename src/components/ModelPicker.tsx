@@ -1,5 +1,6 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Colors, Spacing, FontSize, BorderRadius } from '../constants/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { Colors, Spacing, Type, BorderRadius, BorderWidth, TouchTarget } from '../constants/theme';
 import { buildModelOptions, retirementWarning } from '../services/llm-model';
 
 interface Props {
@@ -26,8 +27,15 @@ export function ModelPicker({ value, onChange }: Props) {
           accessibilityState={{ selected: o.selected }}
           accessibilityLabel={o.label}
         >
-          <Text style={styles.label}>{o.label}</Text>
-          <Text style={styles.description}>{o.description}</Text>
+          <Ionicons
+            name={o.selected ? 'radio-button-on-outline' : 'radio-button-off-outline'}
+            size={22}
+            color={o.selected ? Colors.primary : Colors.textSecondary}
+          />
+          <View style={styles.body}>
+            <Text style={styles.label}>{o.label}</Text>
+            <Text style={styles.description}>{o.description}</Text>
+          </View>
         </TouchableOpacity>
       ))}
       {warning && <Text style={styles.warning}>{warning}</Text>}
@@ -37,14 +45,19 @@ export function ModelPicker({ value, onChange }: Props) {
 
 const styles = StyleSheet.create({
   row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    minHeight: TouchTarget.min,
     padding: Spacing.md,
     borderRadius: BorderRadius.sm,
-    borderWidth: 1,
+    borderWidth: BorderWidth.thin,
     borderColor: Colors.border,
     marginTop: Spacing.sm,
   },
-  rowSelected: { borderColor: Colors.primary, backgroundColor: Colors.primaryLight },
-  label: { fontSize: FontSize.md, color: Colors.text, fontWeight: '600' },
-  description: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: Spacing.xs },
-  warning: { fontSize: FontSize.sm, color: Colors.danger, marginTop: Spacing.sm },
+  rowSelected: { borderColor: Colors.primary },
+  body: { flex: 1 },
+  label: { ...Type.bodyStrong, color: Colors.text },
+  description: { ...Type.caption, color: Colors.textSecondary, marginTop: Spacing.xs },
+  warning: { ...Type.caption, color: Colors.danger, marginTop: Spacing.sm },
 });
