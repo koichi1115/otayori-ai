@@ -1,0 +1,68 @@
+{
+  "context": {
+    "note": "すべて架空。個人情報なし。today=2026-09-29 を前提に年を補完させる。",
+    "facilities": [
+      {"id": 1, "name": "ひまわり保育園", "type": "nursery", "notes": "乳児組（0歳〜2歳）、幼児組（3歳〜5歳）"},
+      {"id": 2, "name": "みどり小学校", "type": "school", "notes": ""},
+      {"id": 3, "name": "さくらピアノ教室", "type": "lesson", "notes": ""}
+    ],
+    "children": [
+      {"id": 1, "name": "たろう", "gender": "male", "birthdate": "2022-05-10", "className": "ひよこ組（幼児組）", "facilityId": 1},
+      {"id": 2, "name": "はなこ", "gender": "female", "birthdate": "2016-02-20", "className": "3年生", "facilityId": 2},
+      {"id": 3, "name": "ゆうた", "gender": "male", "birthdate": "2020-08-01", "className": "6年生", "facilityId": 2}
+    ]
+  },
+  "files": {
+    "01-hoikuen-10gatsu.pdf": {
+      "mimeType": "application/pdf",
+      "events": [
+        {"keyword": "遠足", "date": "2026-10-15", "targetPerson": "たろう"},
+        {"keyword": "ハロウィン", "date": "2026-10-29", "targetPerson": "たろう"}
+      ],
+      "todos": [
+        {"keyword": "同意書", "dueDate": "2026-10-08", "targetPerson": "たろう"},
+        {"keyword": "衣装", "dueDate": "2026-10-28", "targetPerson": "たろう"}
+      ],
+      "items": [
+        {"keyword": "お弁当", "targetPerson": "たろう"},
+        {"keyword": "水筒", "targetPerson": "たろう"},
+        {"keyword": "レジャーシート", "targetPerson": "たろう"},
+        {"keyword": "帽子", "targetPerson": "たろう"},
+        {"keyword": "着替え", "targetPerson": "たろう"}
+      ],
+      "forbidden": []
+    },
+    "02-shogakko-tsushin.pdf": {
+      "mimeType": "application/pdf",
+      "events": [
+        {"keyword": "社会科見学", "date": "2026-10-20", "targetPerson": "はなこ"},
+        {"keyword": "修学旅行", "date": "2026-10-24", "targetPerson": "ゆうた"},
+        {"keyword": "学校公開", "date": "2026-10-30", "targetPerson": "はなこ"}
+      ],
+      "todos": [
+        {"keyword": "申込書", "dueDate": "2026-10-09", "targetPerson": "はなこ"}
+      ],
+      "items": [
+        {"keyword": "お弁当", "targetPerson": "はなこ"},
+        {"keyword": "水筒", "targetPerson": "はなこ"},
+        {"keyword": "筆記用具", "targetPerson": "はなこ"}
+      ],
+      "forbidden": []
+    },
+    "03-narai-photo.jpg": {
+      "mimeType": "image/jpeg",
+      "events": [
+        {"keyword": "発表会", "date": "2026-11-14", "targetPerson": "はなこ"}
+      ],
+      "todos": [
+        {"keyword": "申込書", "dueDate": "2026-10-25", "targetPerson": "はなこ"}
+      ],
+      "items": [
+        {"keyword": "楽譜", "targetPerson": "はなこ"},
+        {"keyword": "上履き", "targetPerson": "はなこ"},
+        {"keyword": "服装", "targetPerson": "はなこ"}
+      ],
+      "forbidden": []
+    }
+  }
+}

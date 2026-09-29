@@ -7,6 +7,7 @@ import * as Haptics from 'expo-haptics';
 import { Colors, Spacing, FontSize, Shadows, BorderRadius } from '../../src/constants/theme';
 import { getAllSettings, setSetting } from '../../src/db/settings';
 import type { AppSettings } from '../../src/types';
+import { ModelPicker } from '../../src/components/ModelPicker';
 
 // LINE公式アカウントの友だち追加URL（後で実際のURLに置き換え）
 const LINE_FRIEND_ADD_URL = 'https://line.me/R/ti/p/@760llvzb';
@@ -145,6 +146,15 @@ export default function SettingsScreen() {
           </View>
         </>
       )}
+
+      {/* AIモデル */}
+      <View style={styles.sectionHeader}>
+        <Ionicons name="sparkles-outline" size={20} color={Colors.text} />
+        <Text style={styles.sectionTitle}>AI解析モデル</Text>
+      </View>
+      <View style={styles.card}>
+        <ModelPicker value={settings.claudeModel} onChange={(id) => updateSetting('claudeModel', id)} />
+      </View>
 
       {/* LINE */}
       <View style={styles.sectionHeader}>
